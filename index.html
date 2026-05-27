@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bononi — Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #08101E;
+  --bg2:      #0D1929;
+  --surface:  #111F33;
+  --border:   rgba(255,255,255,0.07);
+  --blue:     #0EA5E9;
+  --blue2:    #38BDF8;
+  --text:     #F0F6FF;
+  --muted:    rgba(240,246,255,0.45);
+  --dim:      rgba(240,246,255,0.2);
+}
+
+html, body {
+  min-height: 100vh;
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── NOISE TEXTURE ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 0;
+}
+
+/* ── GLOW ORBS ── */
+.orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(120px);
+  pointer-events: none;
+  z-index: 0;
+}
+.orb-1 { width: 600px; height: 600px; background: radial-gradient(circle, rgba(14,165,233,0.12), transparent 70%); top: -200px; right: -100px; }
+.orb-2 { width: 400px; height: 400px; background: radial-gradient(circle, rgba(56,189,248,0.07), transparent 70%); bottom: -100px; left: -100px; }
+
+/* ── AUTH LOADING ── */
+#auth-loading {
+  position: fixed; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 16px; z-index: 100; background: var(--bg);
+}
+.spin {
+  width: 32px; height: 32px;
+  border: 2px solid rgba(14,165,233,0.2);
+  border-top-color: var(--blue);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── LOGIN ── */
+#login-wrap {
+  display: none;
+  position: fixed; inset: 0;
+  align-items: center; justify-content: center;
+  z-index: 50; padding: 20px;
+}
+#login-wrap.show { display: flex; }
+
+.login-box {
+  position: relative; z-index: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 44px 40px;
+  width: 100%; max-width: 400px;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(14,165,233,0.08);
+  animation: fadeUp 0.4s ease;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.login-logo {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 32px;
+}
+.login-logo-mark {
+  width: 42px; height: 42px;
+  background: linear-gradient(135deg, var(--blue), #0369A1);
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 8px 24px rgba(14,165,233,0.3);
+}
+.login-logo-mark svg { width: 22px; height: 22px; }
+.login-logo-text { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+.login-logo-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+.login-h1 { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+.login-sub { font-size: 13px; color: var(--muted); margin-bottom: 28px; }
+
+.login-label { font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: 0.5px; text-transform: uppercase; display: block; margin-bottom: 7px; }
+
+.login-input {
+  width: 100%; height: 44px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0 14px;
+  font-size: 14px; font-family: 'DM Sans', sans-serif;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  margin-bottom: 16px;
+}
+.login-input:focus {
+  border-color: rgba(14,165,233,0.5);
+  box-shadow: 0 0 0 3px rgba(14,165,233,0.1);
+}
+.login-input::placeholder { color: var(--dim); }
+
+.login-btn {
+  width: 100%; height: 46px; margin-top: 4px;
+  background: linear-gradient(135deg, var(--blue), #0284C7);
+  border: none; border-radius: 10px;
+  color: #fff; font-family: 'Syne', sans-serif;
+  font-size: 14px; font-weight: 700; letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+  box-shadow: 0 8px 24px rgba(14,165,233,0.25);
+}
+.login-btn:hover { opacity: 0.92; transform: translateY(-1px); box-shadow: 0 12px 32px rgba(14,165,233,0.35); }
+.login-btn:active { transform: translateY(0); }
+.login-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.login-erro {
+  background: rgba(220,38,38,0.1);
+  border: 1px solid rgba(220,38,38,0.25);
+  color: #FCA5A5;
+  border-radius: 8px; padding: 10px 14px;
+  font-size: 13px; margin-bottom: 14px; display: none;
+}
+
+.login-loading {
+  display: none; align-items: center; justify-content: center;
+  gap: 8px; font-size: 13px; color: var(--muted); padding: 10px 0;
+}
+
+/* ── PORTAL ── */
+#portal {
+  display: none;
+  min-height: 100vh;
+  position: relative; z-index: 1;
+}
+#portal.show { display: block; }
+
+/* Header */
+.portal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 24px 40px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(8,16,30,0.8);
+  backdrop-filter: blur(12px);
+  position: sticky; top: 0; z-index: 10;
+}
+
+.header-logo {
+  display: flex; align-items: center; gap: 12px;
+}
+.header-logo-mark {
+  width: 36px; height: 36px;
+  background: linear-gradient(135deg, var(--blue), #0369A1);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 12px rgba(14,165,233,0.3);
+}
+.header-logo-mark svg { width: 18px; height: 18px; }
+.header-logo-name { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 800; letter-spacing: -0.3px; }
+.header-logo-sub { font-size: 10px; color: var(--muted); }
+
+.header-user {
+  display: flex; align-items: center; gap: 12px;
+}
+.user-chip {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px 6px 8px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border);
+  border-radius: 40px;
+}
+.user-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--blue), #0369A1);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700;
+}
+.user-nome { font-size: 13px; font-weight: 500; }
+
+.btn-sair {
+  height: 34px; padding: 0 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted); font-size: 12px; font-family: 'DM Sans', sans-serif;
+  cursor: pointer; transition: all 0.15s;
+}
+.btn-sair:hover { background: rgba(220,38,38,0.1); border-color: rgba(220,38,38,0.25); color: #FCA5A5; }
+
+/* Content */
+.portal-content {
+  padding: 56px 40px;
+  max-width: 1100px; margin: 0 auto;
+}
+
+.portal-greeting {
+  margin-bottom: 48px;
+}
+.greeting-label {
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 2px; color: var(--blue); margin-bottom: 8px;
+}
+.greeting-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 36px; font-weight: 800;
+  letter-spacing: -1px; line-height: 1.1;
+  color: var(--text);
+}
+.greeting-sub { font-size: 15px; color: var(--muted); margin-top: 8px; }
+
+/* Section */
+.section-label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 2px; color: var(--dim); margin-bottom: 16px;
+}
+
+/* Apps grid */
+.apps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+  margin-bottom: 40px;
+}
+
+.app-card {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+  text-decoration: none;
+  display: block;
+  overflow: hidden;
+  animation: fadeUp 0.4s ease both;
+}
+
+.app-card::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(14,165,233,0.04), transparent);
+  opacity: 0; transition: opacity 0.2s;
+}
+
+.app-card:hover {
+  border-color: rgba(14,165,233,0.3);
+  transform: translateY(-3px);
+  box-shadow: 0 20px 48px rgba(0,0,0,0.3), 0 0 0 1px rgba(14,165,233,0.1);
+}
+.app-card:hover::before { opacity: 1; }
+
+.app-card.locked {
+  opacity: 0.35; cursor: not-allowed;
+  pointer-events: none;
+}
+
+.app-icon {
+  width: 48px; height: 48px;
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; margin-bottom: 16px;
+  position: relative; z-index: 1;
+}
+
+.app-name {
+  font-family: 'Syne', sans-serif;
+  font-size: 16px; font-weight: 700;
+  letter-spacing: -0.3px; margin-bottom: 4px;
+  position: relative; z-index: 1;
+}
+
+.app-desc {
+  font-size: 12px; color: var(--muted); line-height: 1.5;
+  position: relative; z-index: 1;
+}
+
+.app-arrow {
+  position: absolute; top: 20px; right: 20px;
+  font-size: 14px; color: var(--dim);
+  transition: color 0.2s, transform 0.2s;
+}
+.app-card:hover .app-arrow { color: var(--blue); transform: translate(2px,-2px); }
+
+/* Icon color variants */
+.ic-blue    { background: rgba(14,165,233,0.12); }
+.ic-green   { background: rgba(16,185,129,0.12); }
+.ic-orange  { background: rgba(245,158,11,0.12); }
+.ic-red     { background: rgba(239,68,68,0.12); }
+.ic-purple  { background: rgba(139,92,246,0.12); }
+.ic-teal    { background: rgba(20,184,166,0.12); }
+.ic-pink    { background: rgba(236,72,153,0.12); }
+.ic-indigo  { background: rgba(99,102,241,0.12); }
+
+/* Stagger animation */
+.app-card:nth-child(1) { animation-delay: 0.05s; }
+.app-card:nth-child(2) { animation-delay: 0.10s; }
+.app-card:nth-child(3) { animation-delay: 0.15s; }
+.app-card:nth-child(4) { animation-delay: 0.20s; }
+.app-card:nth-child(5) { animation-delay: 0.25s; }
+.app-card:nth-child(6) { animation-delay: 0.30s; }
+.app-card:nth-child(7) { animation-delay: 0.35s; }
+.app-card:nth-child(8) { animation-delay: 0.40s; }
+
+/* Responsive */
+@media (max-width: 640px) {
+  .portal-header { padding: 16px 20px; }
+  .portal-content { padding: 32px 20px; }
+  .greeting-title { font-size: 26px; }
+  .apps-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .app-card { padding: 18px; }
+  .header-logo-sub, .user-chip .user-nome { display: none; }
+}
+@media (max-width: 400px) {
+  .apps-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+
+<!-- Loading -->
+<div id="auth-loading">
+  <div class="spin"></div>
+  <span style="font-size:13px;color:rgba(240,246,255,0.4)">Verificando acesso...</span>
+</div>
+
+<!-- Login -->
+<div id="login-wrap">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-mark">
+        <svg viewBox="0 0 22 22" fill="none"><rect x="1" y="7" width="9" height="12" rx="2" fill="white" opacity="0.9"/><rect x="12" y="1" width="9" height="12" rx="2" fill="white" opacity="0.6"/><rect x="12" y="15" width="9" height="6" rx="2" fill="white" opacity="0.8"/></svg>
+      </div>
+      <div>
+        <div class="login-logo-text">Bononi</div>
+        <div class="login-logo-sub">Grupo Bononi Acessórios</div>
+      </div>
+    </div>
+
+    <div class="login-h1">Bom dia 👋</div>
+    <div class="login-sub">Acesse o portal de aplicativos</div>
+
+    <div class="login-erro" id="login-erro"></div>
+
+    <label class="login-label">E-mail</label>
+    <input class="login-input" type="email" id="login-email" placeholder="seu@email.com.br" autocomplete="email" />
+
+    <label class="login-label">Senha</label>
+    <input class="login-input" type="password" id="login-senha" placeholder="••••••••" autocomplete="current-password"
+      onkeydown="if(event.key==='Enter') fazerLogin()" />
+
+    <button class="login-btn" id="login-btn" onclick="fazerLogin()">Entrar no Portal</button>
+    <div class="login-loading" id="login-loading">
+      <div class="spin" style="width:16px;height:16px;border-width:2px"></div> Verificando...
+    </div>
+  </div>
+</div>
+
+<!-- Portal -->
+<div id="portal">
+  <header class="portal-header">
+    <div class="header-logo">
+      <div class="header-logo-mark">
+        <svg viewBox="0 0 22 22" fill="none"><rect x="1" y="7" width="9" height="12" rx="2" fill="white" opacity="0.9"/><rect x="12" y="1" width="9" height="12" rx="2" fill="white" opacity="0.6"/><rect x="12" y="15" width="9" height="6" rx="2" fill="white" opacity="0.8"/></svg>
+      </div>
+      <div>
+        <div class="header-logo-name">Bononi</div>
+        <div class="header-logo-sub">Portal Gerencial</div>
+      </div>
+    </div>
+    <div class="header-user">
+      <div class="user-chip">
+        <div class="user-avatar" id="user-avatar">B</div>
+        <span class="user-nome" id="user-nome">...</span>
+      </div>
+      <button class="btn-sair" onclick="sair()">Sair</button>
+    </div>
+  </header>
+
+  <div class="portal-content">
+    <div class="portal-greeting">
+      <div class="greeting-label" id="greeting-label">Portal Bononi</div>
+      <div class="greeting-title" id="greeting-title">Olá, <span id="greeting-nome">...</span></div>
+      <div class="greeting-sub">Selecione um aplicativo para acessar</div>
+    </div>
+
+    <div class="section-label">Seus aplicativos</div>
+    <div class="apps-grid" id="apps-grid"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+'use strict';
+
+const SUPA_URL = 'https://vishxwdxqiygbxmtpfoy.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpc2h4d2R4cWl5Z2J4bXRwZm95Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0Njg2MjIsImV4cCI6MjA4ODA0NDYyMn0.J647m3ieDHahNQYBWMRESl0aPFXsT_zt_7ZcDvyB-SA';
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+// ── Catálogo de apps ──
+// acesso: chave no user_metadata.modulos
+// url: null = em breve (bloqueado)
+const APPS = [
+  {
+    id: 'financeiro',
+    nome: 'Financeiro',
+    desc: 'DRE, contas a pagar e receber, RH e visão geral financeira',
+    icon: '📊', cor: 'ic-blue',
+    acesso: 'financeiro',
+    url: 'https://bononi-dashboard.vercel.app/',
+  },
+  {
+    id: 'compras',
+    nome: 'Compras',
+    desc: 'Estoque, alertas de reposição, importação e fornecedores',
+    icon: '📦', cor: 'ic-green',
+    acesso: 'compras',
+    url: 'https://bononi-compras.vercel.app/',
+  },
+  {
+    id: 'assistencia',
+    nome: 'Assistência Técnica',
+    desc: 'Ordens de serviço, peças e indicadores de assistência',
+    icon: '🔧', cor: 'ic-orange',
+    acesso: 'assistencia',
+    url: null, // atualizar quando estiver no ar
+  },
+  {
+    id: 'cobranca',
+    nome: 'Cobrança',
+    desc: 'Gestão de inadimplência, cobranças e carteira de clientes',
+    icon: '📋', cor: 'ic-red',
+    acesso: 'cobranca',
+    url: 'https://bononi-cob.lovable.app/',
+  },
+  {
+    id: 'ecommerce',
+    nome: 'E-commerce',
+    desc: 'Stonni — pedidos, produtos e gestão da loja online',
+    icon: '🛒', cor: 'ic-purple',
+    acesso: 'ecommerce',
+    url: 'https://bononiecomm.lovable.app/',
+  },
+  {
+    id: 'atacado',
+    nome: 'Atacado / CRM',
+    desc: 'CRM de clientes, gestão de carteira e representantes',
+    icon: '🚚', cor: 'ic-teal',
+    acesso: 'atacado',
+    url: 'https://stonnidist.lovable.app/',
+  },
+  {
+    id: 'frete',
+    nome: 'App de Frete',
+    desc: 'Controle de fretes, entregas e logística',
+    icon: '📍', cor: 'ic-indigo',
+    acesso: 'frete',
+    url: 'https://bononifrete.lovable.app/',
+  },
+  {
+    id: 'loja',
+    nome: 'Loja Física',
+    desc: 'Painel da loja física, PDV e operação presencial',
+    icon: '🏪', cor: 'ic-pink',
+    acesso: 'loja',
+    url: 'https://bononiloja.lovable.app/',
+  },
+];
+
+function saudacao() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Bom dia';
+  if (h < 18) return 'Boa tarde';
+  return 'Boa noite';
+}
+
+function renderApps(usuario) {
+  const grid = document.getElementById('apps-grid');
+  grid.innerHTML = '';
+
+  const visiveis = usuario.admin
+    ? APPS
+    : APPS.filter(a => (usuario.modulos || []).includes(a.acesso));
+
+  if (!visiveis.length) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:rgba(240,246,255,0.3);padding:48px 0;font-size:14px">
+      Nenhum aplicativo disponível para seu perfil.<br>Entre em contato com o administrador.
+    </div>`;
+    return;
+  }
+
+  visiveis.forEach(app => {
+    const bloqueado = !app.url;
+    const card = document.createElement('a');
+    card.className = 'app-card' + (bloqueado ? ' locked' : '');
+    if (!bloqueado) {
+      card.href   = app.url;
+      card.target = '_blank';
+      card.rel    = 'noopener';
+    }
+    card.innerHTML = `
+      <div class="app-icon ${app.cor}">${app.icon}</div>
+      <div class="app-name">${app.nome}</div>
+      <div class="app-desc">${app.desc}${bloqueado ? '<br><span style="color:rgba(14,165,233,0.6);font-size:11px;margin-top:4px;display:inline-block">Em breve</span>' : ''}</div>
+      ${!bloqueado ? '<span class="app-arrow">↗</span>' : ''}`;
+    grid.appendChild(card);
+  });
+}
+
+function mostrarPortal(usuario) {
+  document.getElementById('auth-loading').style.display = 'none';
+  document.getElementById('login-wrap').classList.remove('show');
+
+  const nome = usuario.nome;
+  document.getElementById('user-avatar').textContent  = nome.charAt(0).toUpperCase();
+  document.getElementById('user-nome').textContent    = nome;
+  document.getElementById('greeting-nome').textContent = nome.split(' ')[0];
+  document.getElementById('greeting-label').textContent = saudacao();
+  document.getElementById('greeting-title').innerHTML =
+    `${saudacao()}, <span id="greeting-nome" style="color:var(--blue)">${nome.split(' ')[0]}</span> 👋`;
+
+  renderApps(usuario);
+  document.getElementById('portal').classList.add('show');
+}
+
+async function fazerLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const senha  = document.getElementById('login-senha').value;
+  const erro   = document.getElementById('login-erro');
+  const btn    = document.getElementById('login-btn');
+  const spin   = document.getElementById('login-loading');
+
+  erro.style.display = 'none';
+  if (!email || !senha) {
+    erro.textContent = 'Preencha e-mail e senha.';
+    erro.style.display = 'block'; return;
+  }
+  btn.style.display  = 'none';
+  spin.style.display = 'flex';
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: senha });
+
+  if (error) {
+    btn.style.display  = 'block'; spin.style.display = 'none';
+    erro.textContent = error.message.includes('Invalid') ? 'E-mail ou senha incorretos.' : error.message;
+    erro.style.display = 'block'; return;
+  }
+
+  const meta = data.session.user.user_metadata || {};
+  mostrarPortal({
+    nome:    meta.nome || email.split('@')[0],
+    admin:   meta.admin === true,
+    modulos: meta.modulos || [],
+  });
+}
+
+async function sair() {
+  await sb.auth.signOut();
+  document.getElementById('portal').classList.remove('show');
+  document.getElementById('login-wrap').classList.add('show');
+  document.getElementById('apps-grid').innerHTML = '';
+}
+
+// ── Init ──
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    const meta = session.user.user_metadata || {};
+    mostrarPortal({
+      nome:    meta.nome || session.user.email.split('@')[0],
+      admin:   meta.admin === true,
+      modulos: meta.modulos || [],
+    });
+  } else {
+    document.getElementById('auth-loading').style.display = 'none';
+    document.getElementById('login-wrap').classList.add('show');
+  }
+}
+
+init();
+</script>
+</body>
+</html>
