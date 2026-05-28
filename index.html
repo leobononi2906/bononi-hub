@@ -471,13 +471,7 @@ body::before {
     </div>
 
     <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:10px">Módulos de Acesso</label>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px" id="modal-modulos">
-      ${['financeiro','compras','assistencia','cobranca','ecommerce','atacado','frete','loja'].map(m => `
-        <label style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;cursor:pointer;font-size:13px">
-          <input type="checkbox" data-modulo="${m}" style="width:15px;height:15px;accent-color:var(--blue)" />
-          ${{'financeiro':'📊 Financeiro','compras':'📦 Compras','assistencia':'🔧 Assistência','cobranca':'📋 Cobrança','ecommerce':'🛒 E-commerce','atacado':'🚚 Atacado','frete':'📍 Frete','loja':'🏪 Loja'}[m]}
-        </label>`).join('')}
-    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px" id="modal-modulos"></div>
 
     <label style="display:flex;align-items:center;gap:8px;margin-bottom:24px;cursor:pointer;font-size:13px">
       <input type="checkbox" id="modal-admin" style="width:15px;height:15px;accent-color:var(--blue)" />
@@ -733,6 +727,29 @@ async function carregarUsuarios() {
   }
 }
 
+const MODULOS_LABELS = {
+  financeiro: '📊 Financeiro', compras: '📦 Compras', assistencia: '🔧 Assistência',
+  cobranca: '📋 Cobrança', ecommerce: '🛒 E-commerce', atacado: '🚚 Atacado',
+  frete: '📍 Frete', loja: '🏪 Loja'
+};
+
+function renderCheckboxes(modulosMarcados = []) {
+  const div = document.getElementById('modal-modulos');
+  div.innerHTML = '';
+  Object.entries(MODULOS_LABELS).forEach(([m, label]) => {
+    const lbl = document.createElement('label');
+    lbl.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;cursor:pointer;font-size:13px';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.dataset.modulo = m;
+    cb.checked = modulosMarcados.includes(m);
+    cb.style.cssText = 'width:15px;height:15px;accent-color:var(--blue)';
+    lbl.appendChild(cb);
+    lbl.appendChild(document.createTextNode(label));
+    div.appendChild(lbl);
+  });
+}
+
 function abrirModalNovoUsuario() {
   document.getElementById('modal-titulo').textContent = 'Novo Usuário';
   document.getElementById('modal-uid').value = '';
@@ -742,7 +759,7 @@ function abrirModalNovoUsuario() {
   document.getElementById('modal-senha-wrap').style.display = 'block';
   document.getElementById('modal-admin').checked = false;
   document.getElementById('modal-erro').style.display = 'none';
-  document.querySelectorAll('#modal-modulos input[type=checkbox]').forEach(cb => cb.checked = false);
+  renderCheckboxes([]);
   document.getElementById('modal-overlay').style.display = 'flex';
 }
 
@@ -756,9 +773,7 @@ function editarUsuario(u) {
   document.getElementById('modal-admin').checked = u.admin || false;
   document.getElementById('modal-erro').style.display = 'none';
   const modulos = Array.isArray(u.modulos) ? u.modulos : [];
-  document.querySelectorAll('#modal-modulos input[type=checkbox]').forEach(cb => {
-    cb.checked = modulos.includes(cb.dataset.modulo);
-  });
+  renderCheckboxes(modulos);
   document.getElementById('modal-overlay').style.display = 'flex';
 }
 
