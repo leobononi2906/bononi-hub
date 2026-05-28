@@ -202,6 +202,15 @@ body::before {
 }
 .user-nome { font-size: 13px; font-weight: 500; }
 
+.btn-admin {
+  height: 34px; padding: 0 14px;
+  background: rgba(14,165,233,0.1);
+  border: 1px solid rgba(14,165,233,0.25);
+  border-radius: 8px;
+  color: var(--blue); font-size: 12px; font-family: 'DM Sans', sans-serif;
+  cursor: pointer; transition: all 0.15s;
+}
+.btn-admin:hover { background: rgba(14,165,233,0.2); }
 .btn-sair {
   height: 34px; padding: 0 14px;
   background: rgba(255,255,255,0.04);
@@ -401,6 +410,7 @@ body::before {
         <div class="user-avatar" id="user-avatar">B</div>
         <span class="user-nome" id="user-nome">...</span>
       </div>
+      <button class="btn-admin" id="btn-admin" onclick="toggleAdmin()" style="display:none">⚙️ Usuários</button>
       <button class="btn-sair" onclick="sair()">Sair</button>
     </div>
   </header>
@@ -414,6 +424,70 @@ body::before {
 
     <div class="section-label">Seus aplicativos</div>
     <div class="apps-grid" id="apps-grid"></div>
+
+    <!-- PAINEL ADMIN -->
+    <div id="admin-panel" style="display:none;margin-top:40px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--blue);margin-bottom:4px">Administração</div>
+          <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800">Gerenciar Usuários</div>
+        </div>
+        <button onclick="abrirModalNovoUsuario()"
+          style="height:38px;padding:0 16px;background:linear-gradient(135deg,var(--blue),#0284C7);border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">
+          + Novo Usuário
+        </button>
+      </div>
+      <div id="admin-lista" style="display:grid;gap:10px">
+        <div style="text-align:center;padding:32px;color:var(--muted);font-size:13px">Carregando usuários...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR/CRIAR USUÁRIO -->
+<div id="modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:500;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#111F33;border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:32px;width:100%;max-width:480px;box-shadow:0 32px 80px rgba(0,0,0,0.6)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+      <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800" id="modal-titulo">Editar Usuário</div>
+      <button onclick="fecharModal()" style="background:rgba(255,255,255,0.06);border:none;border-radius:8px;width:32px;height:32px;cursor:pointer;color:var(--muted);font-size:16px">✕</button>
+    </div>
+
+    <div id="modal-erro" style="display:none;background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.25);color:#FCA5A5;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:16px"></div>
+
+    <input type="hidden" id="modal-uid" />
+
+    <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px">Nome</label>
+    <input id="modal-nome" type="text" placeholder="Nome do usuário"
+      style="width:100%;height:42px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:0 14px;font-size:14px;font-family:'DM Sans',sans-serif;color:var(--text);outline:none;margin-bottom:16px" />
+
+    <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px">E-mail</label>
+    <input id="modal-email" type="email" placeholder="email@bononi.com.br"
+      style="width:100%;height:42px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:0 14px;font-size:14px;font-family:'DM Sans',sans-serif;color:var(--text);outline:none;margin-bottom:16px" />
+
+    <div id="modal-senha-wrap">
+      <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px">Senha</label>
+      <input id="modal-senha" type="password" placeholder="Mínimo 6 caracteres"
+        style="width:100%;height:42px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:0 14px;font-size:14px;font-family:'DM Sans',sans-serif;color:var(--text);outline:none;margin-bottom:16px" />
+    </div>
+
+    <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:10px">Módulos de Acesso</label>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px" id="modal-modulos">
+      ${['financeiro','compras','assistencia','cobranca','ecommerce','atacado','frete','loja'].map(m => `
+        <label style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;cursor:pointer;font-size:13px">
+          <input type="checkbox" data-modulo="${m}" style="width:15px;height:15px;accent-color:var(--blue)" />
+          ${{'financeiro':'📊 Financeiro','compras':'📦 Compras','assistencia':'🔧 Assistência','cobranca':'📋 Cobrança','ecommerce':'🛒 E-commerce','atacado':'🚚 Atacado','frete':'📍 Frete','loja':'🏪 Loja'}[m]}
+        </label>`).join('')}
+    </div>
+
+    <label style="display:flex;align-items:center;gap:8px;margin-bottom:24px;cursor:pointer;font-size:13px">
+      <input type="checkbox" id="modal-admin" style="width:15px;height:15px;accent-color:var(--blue)" />
+      <span>Administrador <span style="color:var(--muted);font-size:11px">(acessa tudo)</span></span>
+    </label>
+
+    <button id="modal-btn-salvar" onclick="salvarUsuario()"
+      style="width:100%;height:44px;background:linear-gradient(135deg,var(--blue),#0284C7);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;font-family:'Syne',sans-serif;cursor:pointer">
+      Salvar
+    </button>
   </div>
 </div>
 
@@ -435,7 +509,7 @@ const APPS = [
     desc: 'DRE, contas a pagar e receber, RH e visão geral financeira',
     icon: '📊', cor: 'ic-blue',
     acesso: 'financeiro',
-    url: 'https://bononi-dashboard.vercel.app/',
+    url: 'https://bononi-dashboard.vercel.app/', // atualizar quando dasu_financeiro estiver no ar
   },
   {
     id: 'compras',
@@ -548,6 +622,7 @@ function mostrarPortal(usuario) {
     `${saudacao()}, <span id="greeting-nome" style="color:var(--blue)">${nome.split(' ')[0]}</span> 👋`;
 
   renderApps(usuario);
+  if (usuario.admin) document.getElementById('btn-admin').style.display = 'block';
   document.getElementById('portal').classList.add('show');
 }
 
@@ -587,6 +662,152 @@ async function sair() {
   document.getElementById('portal').classList.remove('show');
   document.getElementById('login-wrap').classList.add('show');
   document.getElementById('apps-grid').innerHTML = '';
+}
+
+// ── ADMIN ──
+let _usuarioAtual = null;
+
+function toggleAdmin() {
+  const panel = document.getElementById('admin-panel');
+  const appsSection = document.querySelector('.portal-greeting');
+  const appsGrid = document.getElementById('apps-grid');
+  const sectionLabel = document.querySelector('.section-label');
+  const btn = document.getElementById('btn-admin');
+
+  if (panel.style.display === 'none') {
+    panel.style.display = 'block';
+    appsSection.style.display = 'none';
+    appsGrid.style.display = 'none';
+    sectionLabel.style.display = 'none';
+    btn.textContent = '← Voltar';
+    carregarUsuarios();
+  } else {
+    panel.style.display = 'none';
+    appsSection.style.display = '';
+    appsGrid.style.display = '';
+    sectionLabel.style.display = '';
+    btn.textContent = '⚙️ Usuários';
+  }
+}
+
+async function carregarUsuarios() {
+  const lista = document.getElementById('admin-lista');
+  lista.innerHTML = `<div style="text-align:center;padding:32px;color:var(--muted);font-size:13px">Carregando...</div>`;
+  try {
+    const { data, error } = await sb.rpc('admin_listar_usuarios');
+    if (error) throw error;
+    if (!data?.length) {
+      lista.innerHTML = `<div style="text-align:center;padding:32px;color:var(--muted)">Nenhum usuário encontrado</div>`;
+      return;
+    }
+    lista.innerHTML = data.map(u => {
+      const modulos = Array.isArray(u.modulos) ? u.modulos : [];
+      const ultimoAcesso = u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleDateString('pt-BR') : 'Nunca';
+      return `
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:12px;min-width:0">
+            <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--blue),#0284C7);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0">
+              ${(u.nome||u.email).charAt(0).toUpperCase()}
+            </div>
+            <div style="min-width:0">
+              <div style="font-weight:600;font-size:14px">${u.nome || '—'}</div>
+              <div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.email}</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            ${u.admin ? `<span style="background:rgba(14,165,233,0.15);color:var(--blue);font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;border:1px solid rgba(14,165,233,0.25)">ADMIN</span>`
+            : modulos.length ? modulos.map(m => `<span style="background:rgba(255,255,255,0.06);color:rgba(240,246,255,0.6);font-size:11px;padding:3px 8px;border-radius:6px">${m}</span>`).join('')
+            : `<span style="color:var(--muted);font-size:12px">Sem acesso</span>`}
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+            <span style="font-size:11px;color:var(--muted)">Último: ${ultimoAcesso}</span>
+            <button onclick='editarUsuario(${JSON.stringify(u)})'
+              style="height:32px;padding:0 14px;background:rgba(14,165,233,0.1);border:1px solid rgba(14,165,233,0.2);border-radius:8px;color:var(--blue);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer">
+              Editar
+            </button>
+          </div>
+        </div>`;
+    }).join('');
+  } catch(e) {
+    lista.innerHTML = `<div style="text-align:center;padding:32px;color:#FCA5A5;font-size:13px">Erro: ${e.message}</div>`;
+  }
+}
+
+function abrirModalNovoUsuario() {
+  document.getElementById('modal-titulo').textContent = 'Novo Usuário';
+  document.getElementById('modal-uid').value = '';
+  document.getElementById('modal-nome').value = '';
+  document.getElementById('modal-email').value = '';
+  document.getElementById('modal-senha').value = '';
+  document.getElementById('modal-senha-wrap').style.display = 'block';
+  document.getElementById('modal-admin').checked = false;
+  document.getElementById('modal-erro').style.display = 'none';
+  document.querySelectorAll('#modal-modulos input[type=checkbox]').forEach(cb => cb.checked = false);
+  document.getElementById('modal-overlay').style.display = 'flex';
+}
+
+function editarUsuario(u) {
+  document.getElementById('modal-titulo').textContent = 'Editar Usuário';
+  document.getElementById('modal-uid').value = u.id;
+  document.getElementById('modal-nome').value = u.nome || '';
+  document.getElementById('modal-email').value = u.email;
+  document.getElementById('modal-senha').value = '';
+  document.getElementById('modal-senha-wrap').style.display = 'none'; // não altera senha na edição
+  document.getElementById('modal-admin').checked = u.admin || false;
+  document.getElementById('modal-erro').style.display = 'none';
+  const modulos = Array.isArray(u.modulos) ? u.modulos : [];
+  document.querySelectorAll('#modal-modulos input[type=checkbox]').forEach(cb => {
+    cb.checked = modulos.includes(cb.dataset.modulo);
+  });
+  document.getElementById('modal-overlay').style.display = 'flex';
+}
+
+function fecharModal() {
+  document.getElementById('modal-overlay').style.display = 'none';
+}
+
+async function salvarUsuario() {
+  const uid    = document.getElementById('modal-uid').value;
+  const nome   = document.getElementById('modal-nome').value.trim();
+  const email  = document.getElementById('modal-email').value.trim();
+  const senha  = document.getElementById('modal-senha').value;
+  const isAdmin = document.getElementById('modal-admin').checked;
+  const modulos = [...document.querySelectorAll('#modal-modulos input[type=checkbox]')]
+    .filter(cb => cb.checked).map(cb => cb.dataset.modulo);
+  const erro = document.getElementById('modal-erro');
+  const btn  = document.getElementById('modal-btn-salvar');
+
+  erro.style.display = 'none';
+  if (!nome || !email) { erro.textContent = 'Nome e e-mail são obrigatórios.'; erro.style.display = 'block'; return; }
+
+  btn.textContent = 'Salvando...'; btn.disabled = true;
+
+  try {
+    if (!uid) {
+      // Criar novo usuário
+      if (!senha || senha.length < 6) throw new Error('Senha obrigatória (mínimo 6 caracteres)');
+      const { data: signUp, error: errSignUp } = await sb.auth.admin?.createUser
+        ? await sb.auth.admin.createUser({ email, password: senha, email_confirm: true, user_metadata: { nome, admin: isAdmin, modulos } })
+        : (() => { throw new Error('Use o SQL Editor para criar usuários pela primeira vez.') })();
+      if (errSignUp) throw errSignUp;
+    } else {
+      // Atualizar metadata via RPC
+      const { error: errUpd } = await sb.rpc('admin_atualizar_usuario', {
+        p_uid: uid,
+        p_meta: { nome, admin: isAdmin, modulos, email_verified: true }
+      });
+      if (errUpd) throw errUpd;
+    }
+    fecharModal();
+    carregarUsuarios();
+  } catch(e) {
+    erro.textContent = e.message.includes('createUser') || e.message.includes('admin')
+      ? 'Para criar usuários, use: Supabase → Auth → Add User. Depois edite os acessos aqui.'
+      : e.message;
+    erro.style.display = 'block';
+  } finally {
+    btn.textContent = 'Salvar'; btn.disabled = false;
+  }
 }
 
 // ── Init ──
