@@ -704,8 +704,17 @@ async function carregarUsuarios() {
   const lista = document.getElementById('admin-lista');
   lista.innerHTML = `<div style="text-align:center;padding:32px;color:var(--muted);font-size:13px">Carregando...</div>`;
   try {
-    const { data, error } = await sb.rpc('admin_listar_usuarios');
-    if (error) throw error;
+    const resp = await fetch(SUPA_URL + '/rest/v1/rpc/admin_listar_usuarios', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + (await sb.auth.getSession()).data.session.access_token,
+      },
+      body: '{}'
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
     if (!data?.length) {
       lista.innerHTML = `<div style="text-align:center;padding:32px;color:var(--muted)">Nenhum usuário encontrado</div>`;
       return;
@@ -837,11 +846,17 @@ async function salvarUsuario() {
       if (!resp.ok || result.error) throw new Error(result.error || 'Erro ao criar usuário');
     } else {
       // Atualizar metadata via RPC
-      const { error: errUpd } = await sb.rpc('admin_atualizar_usuario', {
-        p_uid: uid,
-        p_meta: { nome, admin: isAdmin, modulos, email_verified: true }
+      const { data: { session: sess } } = await sb.auth.getSession();
+      const respUpd = await fetch(SUPA_URL + '/rest/v1/rpc/admin_atualizar_usuario', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPA_KEY,
+          'Authorization': 'Bearer ' + sess.access_token,
+        },
+        body: JSON.stringify({ p_uid: uid, p_meta: { nome, admin: isAdmin, modulos, email_verified: true } })
       });
-      if (errUpd) throw errUpd;
+      if (!respUpd.ok) { const e = await respUpd.json(); throw new Error(e.message || 'Erro ao salvar'); }
     }
     fecharModal();
     carregarUsuarios();
