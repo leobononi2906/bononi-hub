@@ -824,11 +824,11 @@ async function salvarUsuario() {
       // Criar novo usuário via Edge Function admin-usuarios
       if (!senha || senha.length < 6) throw new Error('Senha obrigatória (mínimo 6 caracteres)');
       const { data: { session } } = await sb.auth.getSession();
-      const resp = await fetch(, {
+      const resp = await fetch(`${SUPA_URL}/functions/v1/admin-usuarios`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': ,
+          'Authorization': `Bearer ${session.access_token}`,
           'apikey': SUPA_KEY,
         },
         body: JSON.stringify({ acao: 'criar', nome, email, senha, modulos, admin: isAdmin })
@@ -876,11 +876,11 @@ async function resetarSenha() {
   }
   try {
     const { data: { session } } = await sb.auth.getSession();
-    const resp = await fetch(, {
+    const resp = await fetch(`${SUPA_URL}/functions/v1/admin-usuarios`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': ,
+        'Authorization': `Bearer ${session.access_token}`,
         'apikey': SUPA_KEY,
       },
       body: JSON.stringify({ acao: 'resetar_senha', uid, senha })
@@ -919,4 +919,5 @@ init();
 </script>
 </body>
 </html>
+
 
