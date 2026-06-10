@@ -585,6 +585,13 @@ const APPS = [
     icon: '🏪', cor: 'ic-pink',
     acesso: 'loja',
     url: 'https://bononiloja.lovable.app/',
+  {
+    id: 'operacoes',
+    nome: 'Operações',
+    desc: 'Tickets, coletas, entregas e auditoria de frete',
+    icon: '🚚', cor: 'ic-orange',
+    acesso: 'operacoes',
+    url: 'https://bononi-operacoes.vercel.app/',
   },
 ];
 
@@ -764,7 +771,7 @@ async function carregarUsuarios() {
 const MODULOS_LABELS = {
   financeiro: '📊 Financeiro', compras: '📦 Compras', assistencia: '🔧 Assistência',
   cobranca: '📋 Cobrança', ecommerce: '🛒 E-commerce', atacado: '🚚 Atacado',
-  frete: '📍 Frete', loja: '🏪 Loja', stonni: '🏬 Portal Stonni'
+  frete: '📍 Frete', loja: '🏪 Loja', stonni: '🏬 Portal Stonni', operacoes: '🚚 Operações'
 };
 
 function renderCheckboxes(modulosMarcados = []) {
