@@ -413,6 +413,7 @@ body::before {
         <span class="user-nome" id="user-nome">...</span>
       </div>
       <button class="btn-admin" id="btn-admin" onclick="toggleAdmin()" style="display:none">⚙️ Usuários</button>
+      <button class="btn-sair" onclick="abrirModalSenha()" style="background:rgba(99,102,241,0.1);border-color:rgba(99,102,241,0.25);color:#a5b4fc">🔑 Senha</button>
       <button class="btn-sair" onclick="sair()">Sair</button>
     </div>
   </header>
@@ -940,6 +941,43 @@ async function resetarSenha() {
   }
 }
 
+
+// ── Minha Senha ──
+function abrirModalSenha() {
+  document.getElementById('ms-atual').value = '';
+  document.getElementById('ms-nova').value = '';
+  document.getElementById('ms-conf').value = '';
+  document.getElementById('modal-senha-err').style.display = 'none';
+  document.getElementById('modal-senha-ok').style.display = 'none';
+  document.getElementById('modal-minha-senha').style.display = 'flex';
+}
+function fecharModalSenha() {
+  document.getElementById('modal-minha-senha').style.display = 'none';
+}
+async function salvarMinhaSenha() {
+  const atual = document.getElementById('ms-atual').value;
+  const nova  = document.getElementById('ms-nova').value;
+  const conf  = document.getElementById('ms-conf').value;
+  const err   = document.getElementById('modal-senha-err');
+  const ok    = document.getElementById('modal-senha-ok');
+  err.style.display = 'none'; ok.style.display = 'none';
+
+  if (!atual) { err.textContent = 'Digite sua senha atual.'; err.style.display = 'block'; return; }
+  if (nova.length < 6) { err.textContent = 'Nova senha deve ter no mínimo 6 caracteres.'; err.style.display = 'block'; return; }
+  if (nova !== conf) { err.textContent = 'As senhas não coincidem.'; err.style.display = 'block'; return; }
+
+  // Verificar senha atual fazendo re-login
+  const { error: errLogin } = await sb.auth.signInWithPassword({ email: currentUser.email, password: atual });
+  if (errLogin) { err.textContent = 'Senha atual incorreta.'; err.style.display = 'block'; return; }
+
+  // Atualizar para a nova senha
+  const { error: errUpd } = await sb.auth.updateUser({ password: nova });
+  if (errUpd) { err.textContent = errUpd.message; err.style.display = 'block'; return; }
+
+  ok.style.display = 'block';
+  setTimeout(() => fecharModalSenha(), 2000);
+}
+
 // ── Init ──
 async function init() {
   const { data: { session } } = await sb.auth.getSession();
@@ -958,6 +996,35 @@ async function init() {
 
 init();
 </script>
+
+<!-- MODAL MINHA SENHA -->
+<div id="modal-minha-senha" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--border-radius-lg);padding:28px;width:100%;max-width:380px;position:relative">
+    <div style="font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:4px">🔑 Alterar minha senha</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:20px">A nova senha será usada em todos os sistemas Bononi.</div>
+    <div id="modal-senha-err" style="display:none;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;border-radius:8px;padding:10px 12px;font-size:12px;margin-bottom:14px"></div>
+    <div id="modal-senha-ok" style="display:none;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);color:#6ee7b7;border-radius:8px;padding:10px 12px;font-size:12px;margin-bottom:14px">✅ Senha alterada com sucesso!</div>
+    <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px">Senha atual</label>
+    <input id="ms-atual" type="password" placeholder="Digite sua senha atual"
+      style="width:100%;height:42px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:10px;padding:0 14px;font-size:14px;color:var(--text-primary);margin-bottom:14px;outline:none" />
+    <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px">Nova senha</label>
+    <input id="ms-nova" type="password" placeholder="Mínimo 6 caracteres"
+      style="width:100%;height:42px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:10px;padding:0 14px;font-size:14px;color:var(--text-primary);margin-bottom:6px;outline:none" />
+    <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px">Confirmar nova senha</label>
+    <input id="ms-conf" type="password" placeholder="Repita a nova senha"
+      style="width:100%;height:42px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:10px;padding:0 14px;font-size:14px;color:var(--text-primary);margin-bottom:20px;outline:none" />
+    <div style="display:flex;gap:8px">
+      <button onclick="fecharModalSenha()"
+        style="flex:1;height:42px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:13px;cursor:pointer">
+        Cancelar
+      </button>
+      <button onclick="salvarMinhaSenha()"
+        style="flex:2;height:42px;background:linear-gradient(135deg,var(--blue),#0284C7);border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer">
+        Salvar nova senha
+      </button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
 
