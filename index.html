@@ -336,6 +336,7 @@ body::before {
 .app-card:nth-child(7) { animation-delay: 0.35s; }
 .app-card:nth-child(8) { animation-delay: 0.40s; }
 .app-card:nth-child(9) { animation-delay: 0.45s; }
+.app-card:nth-child(10) { animation-delay: 0.50s; }
 
 /* Responsive */
 @media (max-width: 640px) {
@@ -594,6 +595,14 @@ const APPS = [
     acesso: 'operacoes',
     url: 'https://bononi-operacoes.vercel.app/',
   },
+  {
+    id: 'wp',
+    nome: 'WP / Comunicação',
+    desc: 'Comunicação, WhatsApp e gestão de mensagens',
+    icon: '💬', cor: 'ic-green',
+    acesso: 'wp',
+    url: 'https://bononi-wp.vercel.app/',
+  },
 ];
 
 function saudacao() {
@@ -772,7 +781,7 @@ async function carregarUsuarios() {
 const MODULOS_LABELS = {
   financeiro: '📊 Financeiro', compras: '📦 Compras', assistencia: '🔧 Assistência',
   cobranca: '📋 Cobrança', ecommerce: '🛒 E-commerce', atacado: '🚚 Atacado',
-  frete: '📍 Frete', loja: '🏪 Loja', stonni: '🏬 Portal Stonni', operacoes: '🚚 Operações'
+  frete: '📍 Frete', loja: '🏪 Loja', stonni: '🏬 Portal Stonni', operacoes: '🚚 Operações', wp: '💬 WP / Comunicação'
 };
 
 function renderCheckboxes(modulosMarcados = []) {
