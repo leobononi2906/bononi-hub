@@ -988,8 +988,14 @@ function fecharFuncionarios() {
 
 async function carregarFuncionarios() {
   try {
-    const resp = await fetch(SUPA_URL + '/rest/v1/rh_funcionarios?select=*&order=departamento.asc,nome.asc&range=0,9999', {
-      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (await sb.auth.getSession()).data.session.access_token }
+    const resp = await fetch(SUPA_URL + '/rest/v1/rh_funcionarios?select=*&order=departamento.asc,nome.asc', {
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + (await sb.auth.getSession()).data.session.access_token,
+        'Range': '0-9999',
+        'Range-Unit': 'items',
+        'Prefer': 'count=none'
+      }
     });
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.message || data.hint || 'Erro ' + resp.status);
