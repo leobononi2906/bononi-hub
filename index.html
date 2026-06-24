@@ -991,7 +991,9 @@ async function carregarFuncionarios() {
     const resp = await fetch(SUPA_URL + '/rest/v1/rh_funcionarios?select=*&order=departamento.asc,nome.asc&range=0,9999', {
       headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (await sb.auth.getSession()).data.session.access_token }
     });
-    funcTodos = await resp.json();
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.message || data.hint || 'Erro ' + resp.status);
+    funcTodos = Array.isArray(data) ? data : [];
     // Popular select de departamentos
     const depts = [...new Set(funcTodos.map(f => f.departamento).filter(Boolean))].sort();
     const sel = document.getElementById('func-dept');
