@@ -597,6 +597,14 @@ const APPS = [
     acesso: 'operacoes',
     url: 'https://bononi-operacoes.vercel.app/',
   },
+  {
+    id: 'expedicao',
+    nome: 'Expedição',
+    desc: 'Gestão de expedição e logística de saída',
+    icon: '📦', cor: 'ic-orange',
+    acesso: 'expedicao',
+    url: 'https://bononi-exped.vercel.app/',
+  },
 ];
 
 function saudacao() {
@@ -775,7 +783,7 @@ async function carregarUsuarios() {
 const MODULOS_LABELS = {
   financeiro: '📊 Financeiro', compras: '📦 Compras', assistencia: '🔧 Assistência',
   cobranca: '📋 Cobrança', ecommerce: '🛒 E-commerce', atacado: '🚚 Atacado',
-  frete: '📍 Frete', loja: '🏪 Loja', stonni: '🏬 Portal Stonni', operacoes: '🚚 Operações'
+  frete: '📍 Frete', loja: '🏪 Loja', stonni: '🏬 Portal Stonni', operacoes: '🚚 Operações', expedicao: '📦 Expedição'
 };
 
 function renderCheckboxes(modulosMarcados = []) {
