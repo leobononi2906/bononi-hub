@@ -605,6 +605,14 @@ const APPS = [
     acesso: 'expedicao',
     url: 'https://bononi-exped.vercel.app/',
   },
+  {
+    id: 'rede-autorizada',
+    nome: 'Rede Autorizada',
+    desc: 'Portal para rede de assistência técnica autorizada Stonni',
+    icon: '🔧', cor: 'ic-teal',
+    acesso: 'rede-autorizada',
+    url: 'https://parceiro-stonni.vercel.app/',
+  },
 ];
 
 function saudacao() {
@@ -783,7 +791,7 @@ async function carregarUsuarios() {
 const MODULOS_LABELS = {
   financeiro: '📊 Financeiro', compras: '📦 Compras', assistencia: '🔧 Assistência',
   cobranca: '📋 Cobrança', ecommerce: '🛒 E-commerce', atacado: '🚚 Atacado',
-  frete: '📍 Frete', loja: '🏪 Loja', stonni: '🏬 Portal Stonni', operacoes: '🚚 Operações', expedicao: '📦 Expedição'
+  frete: '📍 Frete', loja: '🏪 Loja', stonni: '🏬 Portal Stonni', operacoes: '🚚 Operações', expedicao: '📦 Expedição', 'rede-autorizada': '🔧 Rede Autorizada'
 };
 
 function renderCheckboxes(modulosMarcados = []) {
