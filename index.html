@@ -780,6 +780,10 @@ async function carregarUsuarios() {
               style="height:32px;padding:0 14px;background:rgba(14,165,233,0.1);border:1px solid rgba(14,165,233,0.2);border-radius:8px;color:var(--blue);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer">
               Editar
             </button>
+            <button onclick='deletarUsuario("${u.id}", "${u.email}")'
+              style="height:32px;padding:0 12px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:8px;color:#FCA5A5;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer">
+              🗑️
+            </button>
           </div>
         </div>`;
     }).join('');
@@ -1161,6 +1165,29 @@ async function toggleAtivoFunc(id, atual) {
     });
     await carregarFuncionarios();
   } catch(e) { alert('Erro: ' + e.message); }
+}
+
+
+// ── Deletar Usuário ──
+async function deletarUsuario(uid, email) {
+  if (!confirm(`Excluir o login de ${email}?\n\nEsta ação remove o acesso permanentemente. O funcionário pode ser recadastrado depois.`)) return;
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    const resp = await fetch(`${SUPA_URL}/functions/v1/admin-usuarios`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+        'apikey': SUPA_KEY,
+      },
+      body: JSON.stringify({ acao: 'deletar', uid })
+    });
+    const result = await resp.json();
+    if (!resp.ok || result.error) throw new Error(result.error || 'Erro ao excluir');
+    await carregarUsuarios();
+  } catch(e) {
+    alert('Erro: ' + e.message);
+  }
 }
 
 // ── Init ──
