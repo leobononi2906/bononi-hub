@@ -613,6 +613,14 @@ const APPS = [
     acesso: 'rede-autorizada',
     url: 'https://parceiro-stonni.vercel.app/',
   },
+  {
+    id: 'vendas',
+    nome: 'Consulta Vendas',
+    desc: 'Consulta de vendas por vendedor',
+    icon: '📈', cor: 'ic-blue',
+    acesso: 'vendas',
+    url: 'https://bononi-vendas.vercel.app/',
+  },
 ];
 
 function saudacao() {
@@ -795,7 +803,7 @@ async function carregarUsuarios() {
 const MODULOS_LABELS = {
   financeiro: '📊 Financeiro', compras: '📦 Compras', assistencia: '🔧 Assistência',
   cobranca: '📋 Cobrança', ecommerce: '🛒 E-commerce', atacado: '🚚 Atacado',
-  frete: '📍 Frete', loja: '🏪 Loja', stonni: '🏬 Portal Stonni', operacoes: '🚚 Operações', expedicao: '📦 Expedição', 'rede-autorizada': '🔧 Rede Autorizada'
+  frete: '📍 Frete', loja: '🏪 Loja', stonni: '🏬 Portal Stonni', operacoes: '🚚 Operações', expedicao: '📦 Expedição', 'rede-autorizada': '🔧 Rede Autorizada', vendas: '📈 Consulta Vendas'
 };
 
 function renderCheckboxes(modulosMarcados = []) {
