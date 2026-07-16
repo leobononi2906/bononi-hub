@@ -10,15 +10,23 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:       #08101E;
-  --bg2:      #0D1929;
-  --surface:  #111F33;
-  --border:   rgba(255,255,255,0.07);
-  --blue:     #0EA5E9;
-  --blue2:    #38BDF8;
-  --text:     #F0F6FF;
-  --muted:    rgba(240,246,255,0.45);
-  --dim:      rgba(240,246,255,0.2);
+  --bg:           #F0F3F8;
+  --bg2:          #F7F9FC;
+  --surface:      #FFFFFF;
+  --surface2:     #F7F9FC;
+  --border:       #E2E8F2;
+  --blue:         #1A3A8F;
+  --blue-mid:     #0077CC;
+  --blue2:        #0EA5E9;
+  --text:         #0F1D35;
+  --muted:        #5A6A85;
+  --dim:          #9AA5B8;
+  --sidebar-bg:   #1A3A8F;
+  --sidebar-text: rgba(255,255,255,0.75);
+  --sidebar-active: rgba(14,165,233,0.18);
+  --border-radius-lg: 12px;
+  --border-radius-md: 8px;
+  --shadow: 0 1px 3px rgba(15,29,53,0.06);
 }
 
 html, body {
@@ -28,6 +36,10 @@ html, body {
   color: var(--text);
   -webkit-font-smoothing: antialiased;
 }
+
+/* Remove noise/orbs no tema claro */
+body::before { display: none; }
+.orb { display: none; }
 
 /* ── NOISE TEXTURE ── */
 body::before {
@@ -763,11 +775,40 @@ async function carregarUsuarios() {
       lista.innerHTML = `<div style="text-align:center;padding:32px;color:var(--muted)">Nenhum usuário encontrado</div>`;
       return;
     }
+    // Filtrar usuários da rede autorizada (sem nome interno) e guardar todos
+    window._todosUsuarios = data.filter(u => {
+      // Excluir quem tem módulo 'rede-autorizada' como único ou quem é claramente externo
+      const mods = Array.isArray(u.modulos) ? u.modulos : [];
+      const soRede = mods.length > 0 && mods.every(m => m === 'rede-autorizada');
+      const semNomeComRede = !u.nome && mods.includes('rede-autorizada');
+      return !soRede && !semNomeComRede;
+    });
+    renderUsuarios(window._todosUsuarios);
+  } catch(e) {
+    lista.innerHTML = `<div style="text-align:center;padding:32px;color:#EF4444;font-size:13px">Erro: ${e.message}</div>`;
+  }
+}
+
+function filtrarUsuarios() {
+  const q = (document.getElementById('admin-busca')?.value || '').toLowerCase().trim();
+  const todos = window._todosUsuarios || [];
+  const filtrados = q ? todos.filter(u =>
+    (u.nome||'').toLowerCase().includes(q) || (u.email||'').toLowerCase().includes(q)
+  ) : todos;
+  renderUsuarios(filtrados);
+}
+
+function renderUsuarios(data) {
+  const lista = document.getElementById('admin-lista');
+  if (!data?.length) {
+    lista.innerHTML = `<div style="text-align:center;padding:32px;color:var(--muted)">Nenhum usuário encontrado</div>`;
+    return;
+  }
     lista.innerHTML = data.map(u => {
       const modulos = Array.isArray(u.modulos) ? u.modulos : [];
       const ultimoAcesso = u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleDateString('pt-BR') : 'Nunca';
       return `
-        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;box-shadow:0 1px 3px rgba(15,29,53,0.04)">
           <div style="display:flex;align-items:center;gap:12px;min-width:0">
             <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--blue),#0284C7);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0">
               ${(u.nome||u.email).charAt(0).toUpperCase()}
@@ -778,14 +819,14 @@ async function carregarUsuarios() {
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            ${u.admin ? `<span style="background:rgba(14,165,233,0.15);color:var(--blue);font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;border:1px solid rgba(14,165,233,0.25)">ADMIN</span>`
-            : modulos.length ? modulos.map(m => `<span style="background:rgba(255,255,255,0.06);color:rgba(240,246,255,0.6);font-size:11px;padding:3px 8px;border-radius:6px">${m}</span>`).join('')
+            ${u.admin ? `<span style="background:#E8F4FD;color:#0077CC;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;border:1px solid #B3D9F5">ADMIN</span>`
+            : modulos.length ? modulos.map(m => `<span style="background:var(--bg2);color:var(--muted);font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--border)">${m}</span>`).join('')
             : `<span style="color:var(--muted);font-size:12px">Sem acesso</span>`}
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
             <span style="font-size:11px;color:var(--muted)">Último: ${ultimoAcesso}</span>
             <button onclick='editarUsuario(${JSON.stringify(u)})'
-              style="height:32px;padding:0 14px;background:rgba(14,165,233,0.1);border:1px solid rgba(14,165,233,0.2);border-radius:8px;color:var(--blue);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer">
+              style="height:32px;padding:0 14px;background:#EEF4FF;border:1px solid #C7D9F5;border-radius:8px;color:#1A3A8F;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer">
               Editar
             </button>
             <button onclick='deletarUsuario("${u.id}", "${u.email}")'
@@ -795,9 +836,6 @@ async function carregarUsuarios() {
           </div>
         </div>`;
     }).join('');
-  } catch(e) {
-    lista.innerHTML = `<div style="text-align:center;padding:32px;color:#FCA5A5;font-size:13px">Erro: ${e.message}</div>`;
-  }
 }
 
 const MODULOS_LABELS = {
