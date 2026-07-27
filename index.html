@@ -29,6 +29,10 @@
   --shadow: 0 1px 3px rgba(15,29,53,0.06);
 }
 
+@keyframes pulse-red {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.3); }
+}
 html, body {
   min-height: 100vh;
   font-family: 'DM Sans', sans-serif;
@@ -419,6 +423,24 @@ body::before {
         <div class="header-logo-sub">Portal Gerencial</div>
       </div>
     </div>
+    <!-- Indicador de Sync -->
+    <div id="sync-indicator" style="display:none;align-items:center;gap:7px;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;border:1px solid transparent;transition:all .2s" onclick="abrirSyncDetalhe()" title="Status da sincronização com o ERP">
+      <span id="sync-dot" style="width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0"></span>
+      <span id="sync-label">Verificando...</span>
+    </div>
+
+    <!-- Modal detalhe sync -->
+    <div id="sync-modal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(15,29,53,0.4);align-items:center;justify-content:center">
+      <div style="background:#fff;border:1px solid var(--border);border-radius:16px;padding:24px;width:100%;max-width:480px;box-shadow:0 8px 32px rgba(15,29,53,0.12)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div style="font-size:16px;font-weight:700;color:var(--text)">🔄 Status da Sincronização ERP</div>
+          <button onclick="fecharSyncDetalhe()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;line-height:1">×</button>
+        </div>
+        <div id="sync-detalhe-content" style="font-size:13px;color:var(--muted)">Carregando...</div>
+        <p style="font-size:11px;color:var(--dim);margin-top:14px;margin-bottom:0">Sincronização automática todo dia às 00:30. Sábado e domingo não são monitorados.</p>
+      </div>
+    </div>
+
     <div class="header-user">
       <div class="user-chip">
         <div class="user-avatar" id="user-avatar">B</div>
@@ -689,6 +711,8 @@ function mostrarPortal(usuario) {
 
   renderApps(usuario);
   if (usuario.admin) { document.getElementById('btn-admin').style.display = 'block'; document.getElementById('btn-func').style.display = 'block'; }
+  verificarSync();
+  setInterval(verificarSync, 5 * 60 * 1000); // re-verifica a cada 5 min
   document.getElementById('portal').classList.add('show');
 }
 
@@ -1234,6 +1258,117 @@ async function deletarUsuario(uid, email) {
   } catch(e) {
     alert('Erro: ' + e.message);
   }
+}
+
+
+// ── Indicador de Sync ERP ──────────────────────────────────────
+const SYNC_VIEWS = [
+  { nome: 'Faturamento',  query: "vw_comercial_docs_faturados?select=data_faturamento&order=data_faturamento.desc&limit=1" },
+  { nome: 'Produtos',     query: "vw_fb_produtos_compras?select=dt_atualizacao&order=dt_atualizacao.desc&limit=1" },
+  { nome: 'CR (Receber)', query: "vw_fin_cr?select=dt_vencimento&order=dt_vencimento.desc&limit=1" },
+  { nome: 'Mov. RD',      query: "vw_fb_mov_grupo_rd?select=dt_movimento&order=dt_movimento.desc&limit=1" },
+  { nome: 'Colaborador',  query: "vw_dim_colaborador?select=dt_admissao&order=dt_admissao.desc&limit=1" },
+];
+
+async function verificarSync() {
+  const ind = document.getElementById('sync-indicator');
+  const dot = document.getElementById('sync-dot');
+  const lbl = document.getElementById('sync-label');
+  if (!ind) return;
+
+  // Sábado (6) e domingo (0) — não monitorar
+  const diaSemana = new Date().getDay();
+  if (diaSemana === 0 || diaSemana === 6) {
+    ind.style.display = 'flex';
+    ind.className = 'sync-skip';
+    dot.style.background = '#94A3B8';
+    lbl.textContent = 'Sync — fim de semana';
+    return;
+  }
+
+  try {
+    const token = (await sb.auth.getSession()).data.session?.access_token;
+    if (!token) return;
+    const headers = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + token };
+    const agora = new Date();
+    const resultados = [];
+
+    for (const v of SYNC_VIEWS) {
+      try {
+        const resp = await fetch(SUPA_URL + '/rest/v1/' + v.query, { headers });
+        const data = await resp.json();
+        const row = Array.isArray(data) ? data[0] : null;
+        // Pegar qualquer campo de data do resultado
+        const dtStr = row ? Object.values(row)[0] : null;
+        const dt = dtStr ? new Date(dtStr) : null;
+        const horas = dt ? (agora - dt) / 3600000 : null;
+        resultados.push({ nome: v.nome, dt, horas, ok: horas !== null && horas <= 24 });
+      } catch(e) {
+        resultados.push({ nome: v.nome, dt: null, horas: null, ok: false });
+      }
+    }
+
+    const todosOk = resultados.every(r => r.ok);
+    const algumOk = resultados.some(r => r.ok);
+    const maxHoras = Math.max(...resultados.filter(r => r.horas).map(r => r.horas));
+
+    ind.style.display = 'flex';
+    if (todosOk) {
+      ind.className = 'sync-ok';
+      dot.style.background = '#16A34A';
+      lbl.textContent = 'ERP sincronizado';
+    } else if (algumOk) {
+      ind.className = 'sync-warn';
+      dot.style.background = '#D97706';
+      lbl.textContent = 'Sync parcial';
+    } else {
+      ind.className = 'sync-error';
+      dot.style.background = '#DC2626';
+      dot.style.animation = 'pulse-red 1.5s infinite';
+      lbl.textContent = 'Sync atrasado!';
+    }
+
+    // Guardar para o modal
+    window._syncResultados = resultados;
+    window._syncMaxHoras = maxHoras;
+
+  } catch(e) {
+    console.error('Erro ao verificar sync:', e);
+  }
+}
+
+function abrirSyncDetalhe() {
+  const modal = document.getElementById('sync-modal');
+  const content = document.getElementById('sync-detalhe-content');
+  modal.style.display = 'flex';
+
+  const diaSemana = new Date().getDay();
+  if (diaSemana === 0 || diaSemana === 6) {
+    content.innerHTML = '<p style="color:var(--muted)">Monitoramento suspenso aos finais de semana.</p>';
+    return;
+  }
+
+  const res = window._syncResultados || [];
+  if (!res.length) { content.innerHTML = 'Carregando...'; return; }
+
+  content.innerHTML = res.map(r => {
+    const cor = r.ok ? '#16A34A' : '#DC2626';
+    const bg  = r.ok ? '#F0FDF4' : '#FEF2F2';
+    const icone = r.ok ? '✅' : '❌';
+    const hLabel = r.horas != null ? (r.horas < 1 ? 'Menos de 1h atrás' : Math.round(r.horas) + 'h atrás') : 'Sem dados';
+    const dtLabel = r.dt ? r.dt.toLocaleString('pt-BR') : '—';
+    return \`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:8px;margin-bottom:8px;background:\${bg};border:1px solid \${r.ok?'#BBF7D0':'#FECACA'}">
+      <div>
+        <span style="font-weight:600;color:var(--text)">\${icone} \${r.nome}</span>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Último dado: \${dtLabel}</div>
+      </div>
+      <span style="font-size:12px;font-weight:700;color:\${cor}">\${hLabel}</span>
+    </div>\`;
+  }).join('');
+}
+
+function fecharSyncDetalhe() {
+  document.getElementById('sync-modal').style.display = 'none';
 }
 
 // ── Init ──
