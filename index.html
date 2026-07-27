@@ -1352,18 +1352,19 @@ function abrirSyncDetalhe() {
   if (!res.length) { content.innerHTML = 'Carregando...'; return; }
 
   content.innerHTML = res.map(r => {
-    const cor = r.ok ? '#16A34A' : '#DC2626';
-    const bg  = r.ok ? '#F0FDF4' : '#FEF2F2';
-    const icone = r.ok ? '✅' : '❌';
-    const hLabel = r.horas != null ? (r.horas < 1 ? 'Menos de 1h atrás' : Math.round(r.horas) + 'h atrás') : 'Sem dados';
-    const dtLabel = r.dt ? r.dt.toLocaleString('pt-BR') : '—';
-    return \`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:8px;margin-bottom:8px;background:\${bg};border:1px solid \${r.ok?'#BBF7D0':'#FECACA'}">
-      <div>
-        <span style="font-weight:600;color:var(--text)">\${icone} \${r.nome}</span>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px">Último dado: \${dtLabel}</div>
-      </div>
-      <span style="font-size:12px;font-weight:700;color:\${cor}">\${hLabel}</span>
-    </div>\`;
+    var cor   = r.ok ? '#16A34A' : '#DC2626';
+    var bg    = r.ok ? '#F0FDF4' : '#FEF2F2';
+    var bdr   = r.ok ? '#BBF7D0' : '#FECACA';
+    var icone = r.ok ? '✅' : '❌';
+    var hLabel = r.horas != null ? (r.horas < 1 ? 'Menos de 1h atrás' : Math.round(r.horas) + 'h atrás') : 'Sem dados';
+    var dtLabel = r.dt ? r.dt.toLocaleString('pt-BR') : '—';
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:8px;margin-bottom:8px;background:' + bg + ';border:1px solid ' + bdr + '">' +
+      '<div>' +
+        '<span style="font-weight:600;color:var(--text)">' + icone + ' ' + r.nome + '</span>' +
+        '<div style="font-size:11px;color:var(--muted);margin-top:2px">Último dado: ' + dtLabel + '</div>' +
+      '</div>' +
+      '<span style="font-size:12px;font-weight:700;color:' + cor + '">' + hLabel + '</span>' +
+    '</div>';
   }).join('');
 }
 
