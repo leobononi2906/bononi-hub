@@ -25,9 +25,13 @@ Botões ⚙️ Usuários / 👥 Funcionários. Listar: RPC `admin_listar_usuario
 Em produção. Telas: Login · Portal (grid de apps por permissão) · Admin Usuários · modal Editar/Criar usuário · modal Minha Senha · modal Funcionários · indicador+modal de Sync ERP.
 
 ## Pendências / próximos passos
-- [ ] Confirmar caminho de deploy (agora clonado; validar que Vercel puxa do GitHub `main`).
-- [ ] `confirm()` nativo em deletarUsuario/toggleAtivoFunc — trocar por modal HTML (bononi-padrao §3.6) quando mexer nessas telas.
+- [ ] Achatar a pasta: o clone está aninhado em `bononi-hub\bononi-hub\`. A raiz externa ainda tem duplicatas/backup (`bononihubumbler.zip`, `push/`). Valiosos (supabase/, docs, README) já foram versionados no clone. Limpar a raiz: `rm -rf "C:\CLAUDE\Projetos GitHub\bononi-hub\index.html" "...\docs" "...\supabase" "...\README.md"` (o classificador bloqueia auto-delete; Leo roda).
 - [ ] `financeiro`: nota "atualizar quando dasu_financeiro estiver no ar" — verificar.
+
+## Feito
+- [x] Deploy confirmado: git → push `main` → Vercel.
+- [x] `confirm()`/`alert()` nativos → modal (`bononiConfirmar`) + toast (`bononiToast`).
+- [x] Painel Usuários agrupado (Internos / Representantes / Rede Autorizada).
 
 ## Dívidas e armadilhas conhecidas
 - Chave de acesso ≠ nome do app (stonni/varejo/atacado). App novo entra em `APPS` **e** `MODULOS_LABELS`.
@@ -35,4 +39,5 @@ Em produção. Telas: Login · Portal (grid de apps por permissão) · Admin Usu
 - Arquivo único grande — quebra gradual ao mexer.
 
 ## Dev-log
+- 2026-08-11 — **Painel Usuários por grupos:** internos, representantes (módulo `stonni`) e rede autorizada (`rede-autorizada`) estavam embolados (a rede até era escondida). Agora `classificarUsuario()` separa em 3 grupos; chips de filtro com contagem (default Internos), busca mantida, etiqueta de tipo na visão "Todos". **UX:** `confirm()`/`alert()` nativos → `bononiConfirmar()` (modal) + `bononiToast()`. **Repo:** versionado `supabase/` (edge umbler-intake + migrations), README e `docs/UMBLER-FONTE-UNICA.md` que só existiam na pasta solta. Commits 91ee9d5.
 - 2026-08-11 — **Revisão de layout (todas as telas):** o Hub era tema claro com resíduos de tema escuro que quebravam a leitura. Corrigido: modal Editar Usuário era fundo escuro `#111F33` com inputs de texto escuro (texto sumia) → agora card claro; inputs do login/senha/funcionários com fundo `rgba(255,255,255,.04)` invisível no branco → `var(--input-bg)`; textos de erro/sucesso (`#fca5a5`/`#6ee7b7`) e empty/loading em cor clara sobre fundo claro → tokens `--destructive`/`--success`/`--muted`; bordas brancas-transparentes → `var(--border)`; sombras pesadas `rgba(0,0,0,.5)` → sombras Bononi suaves. Adicionados tokens de estado no `:root`. **Melhorias:** busca no painel de Usuários (input `admin-busca` que faltava), saudação do login dinâmica (Bom dia/Boa tarde/Boa noite). Também trocada a URL da Cobrança no catálogo: Lovable → `bononi-cobranca.vercel.app`. Validado node --check (sintaxe OK).
