@@ -482,6 +482,12 @@ body::before {
           + Novo Usuário
         </button>
       </div>
+      <details id="admins-por-app-box" style="margin-bottom:16px;border:1px solid var(--border);border-radius:12px;background:var(--surface);overflow:hidden">
+        <summary style="cursor:pointer;padding:12px 16px;font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px">
+          🛡️ Admins por aplicação <span style="font-size:11px;font-weight:600;color:var(--muted)">— quem administra cada app</span>
+        </summary>
+        <div id="admins-por-app" style="padding:4px 16px 16px"></div>
+      </details>
       <div id="admin-grupos" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"></div>
       <input id="admin-busca" type="text" placeholder="🔍 Buscar por nome ou e-mail..." oninput="filtrarUsuarios()"
         style="width:100%;height:40px;background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:0 14px;font-size:13px;color:var(--text);font-family:'DM Sans',sans-serif;outline:none;margin-bottom:16px" />
@@ -518,12 +524,13 @@ body::before {
         style="width:100%;height:42px;background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:0 14px;font-size:14px;font-family:'DM Sans',sans-serif;color:var(--text);outline:none;margin-bottom:16px" />
     </div>
 
-    <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:10px">Módulos de Acesso</label>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px" id="modal-modulos"></div>
+    <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px">Módulos de Acesso</label>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Marque o acesso; o <span style="color:#0F9D6E;font-weight:700">🛡️ admin</span> libera a administração daquele app (só disponível se tiver o acesso).</div>
+    <div style="display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:20px" id="modal-modulos"></div>
 
     <label style="display:flex;align-items:center;gap:8px;margin-bottom:24px;cursor:pointer;font-size:13px">
       <input type="checkbox" id="modal-admin" style="width:15px;height:15px;accent-color:var(--blue)" />
-      <span>Administrador <span style="color:var(--muted);font-size:11px">(acessa tudo)</span></span>
+      <span>Administrador global <span style="color:var(--muted);font-size:11px">(acessa e administra TUDO)</span></span>
     </label>
 
     <button id="modal-btn-salvar" onclick="salvarUsuario()"
@@ -813,6 +820,7 @@ async function carregarUsuarios() {
     window._todosUsuarios = (Array.isArray(data) ? data : []).map(u => ({ ...u, _grupo: classificarUsuario(u) }));
     if (!window._grupoAtual) window._grupoAtual = 'interno';
     renderGruposChips();
+    renderAdminsPorApp();
     filtrarUsuarios();
   } catch(e) {
     lista.innerHTML = `<div style="text-align:center;padding:32px;color:#EF4444;font-size:13px">Erro: ${e.message}</div>`;
@@ -860,6 +868,34 @@ function renderGruposChips() {
   }).join('');
 }
 
+// Visão consolidada: quem administra cada app
+function renderAdminsPorApp() {
+  const box = document.getElementById('admins-por-app');
+  if (!box) return;
+  const todos = window._todosUsuarios || [];
+  const nome = u => u.nome || u.email || '—';
+  const globais = todos.filter(u => u.admin);
+  const azul  = 'background:#E8F4FD;color:#0077CC;border:1px solid #B3D9F5';
+  const verde = 'background:#E6F7F4;color:#0F9D6E;border:1px solid #B6E4D8';
+  const chip = (txt, css) => `<span style="${css};font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;white-space:nowrap">${txt}</span>`;
+
+  let html = `<div style="margin:8px 0 14px">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:6px">Admins globais <span style="font-weight:600;text-transform:none;letter-spacing:0">(acessam tudo)</span></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">${globais.length ? globais.map(u => chip('👑 ' + nome(u), azul)).join('') : '<span style="font-size:12px;color:var(--muted)">Nenhum</span>'}</div>
+  </div>`;
+
+  html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px">`;
+  Object.entries(MODULOS_LABELS).forEach(([m, label]) => {
+    const admins = todos.filter(u => !u.admin && Array.isArray(u.admin_modulos) && u.admin_modulos.includes(m));
+    html += `<div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--surface2)">
+      <div style="font-size:12px;font-weight:700;margin-bottom:7px">${label}</div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap">${admins.length ? admins.map(u => chip('🛡️ ' + nome(u), verde)).join('') : '<span style="font-size:11px;color:var(--muted)">— sem admin próprio</span>'}</div>
+    </div>`;
+  });
+  html += `</div>`;
+  box.innerHTML = html;
+}
+
 function filtrarUsuarios() {
   const q = (document.getElementById('admin-busca')?.value || '').toLowerCase().trim();
   const g = window._grupoAtual || 'interno';
@@ -902,8 +938,13 @@ function renderUsuarios(data, grupo) {
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
             ${tagHtml}
-            ${u.admin ? `<span style="background:#E8F4FD;color:#0077CC;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;border:1px solid #B3D9F5">ADMIN</span>`
-            : modulos.length ? modulos.map(m => `<span style="background:var(--bg2);color:var(--muted);font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--border)">${m}</span>`).join('')
+            ${u.admin ? `<span style="background:#E8F4FD;color:#0077CC;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;border:1px solid #B3D9F5">👑 ADMIN GLOBAL</span>`
+            : modulos.length ? modulos.map(m => {
+                const isAdm = Array.isArray(u.admin_modulos) && u.admin_modulos.includes(m);
+                return isAdm
+                  ? `<span title="Admin deste app" style="background:#E6F7F4;color:#0F9D6E;font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;border:1px solid #B6E4D8">🛡️ ${m}</span>`
+                  : `<span style="background:var(--bg2);color:var(--muted);font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--border)">${m}</span>`;
+              }).join('')
             : `<span style="color:var(--muted);font-size:12px">Sem acesso</span>`}
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
@@ -927,20 +968,47 @@ const MODULOS_LABELS = {
   frete: '📍 Frete', loja: '🏪 Loja', stonni: '🏬 Portal Stonni', operacoes: '🚚 Operações', expedicao: '📦 Expedição', 'rede-autorizada': '🔧 Rede Autorizada', varejo: '📈 Consulta Vendas'
 };
 
-function renderCheckboxes(modulosMarcados = []) {
+function renderCheckboxes(modulosMarcados = [], adminMarcados = []) {
   const div = document.getElementById('modal-modulos');
   div.innerHTML = '';
   Object.entries(MODULOS_LABELS).forEach(([m, label]) => {
+    const temAcesso = modulosMarcados.includes(m);
+    const ehAdmin   = temAcesso && adminMarcados.includes(m);
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px';
+
     const lbl = document.createElement('label');
-    lbl.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:13px';
+    lbl.style.cssText = 'display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;flex:1;min-width:0';
     const cb = document.createElement('input');
     cb.type = 'checkbox';
     cb.dataset.modulo = m;
-    cb.checked = modulosMarcados.includes(m);
-    cb.style.cssText = 'width:15px;height:15px;accent-color:var(--blue)';
+    cb.checked = temAcesso;
+    cb.style.cssText = 'width:15px;height:15px;accent-color:var(--blue);flex-shrink:0';
     lbl.appendChild(cb);
     lbl.appendChild(document.createTextNode(label));
-    div.appendChild(lbl);
+
+    const admLbl = document.createElement('label');
+    admLbl.title = 'Administrador deste app';
+    admLbl.style.cssText = 'display:flex;align-items:center;gap:5px;cursor:pointer;font-size:11px;font-weight:600;color:#0F9D6E;flex-shrink:0;user-select:none;white-space:nowrap;opacity:' + (temAcesso ? '1' : '.4');
+    const adm = document.createElement('input');
+    adm.type = 'checkbox';
+    adm.dataset.admModulo = m;
+    adm.checked = ehAdmin;
+    adm.disabled = !temAcesso;
+    adm.style.cssText = 'width:14px;height:14px;accent-color:#0F9D6E';
+    admLbl.appendChild(adm);
+    admLbl.appendChild(document.createTextNode('🛡️ admin'));
+
+    // admin só faz sentido com acesso: liga/desliga junto
+    cb.addEventListener('change', () => {
+      adm.disabled = !cb.checked;
+      if (!cb.checked) adm.checked = false;
+      admLbl.style.opacity = cb.checked ? '1' : '.4';
+    });
+
+    row.appendChild(lbl);
+    row.appendChild(admLbl);
+    div.appendChild(row);
   });
 }
 
@@ -956,7 +1024,7 @@ function abrirModalNovoUsuario() {
   document.getElementById('modal-btn-toggle-senha').style.display = 'none';
   document.getElementById('modal-admin').checked = false;
   document.getElementById('modal-erro').style.display = 'none';
-  renderCheckboxes([]);
+  renderCheckboxes([], []);
   document.getElementById('modal-overlay').style.display = 'flex';
 }
 
@@ -973,7 +1041,8 @@ function editarUsuario(u) {
   document.getElementById('modal-admin').checked = u.admin || false;
   document.getElementById('modal-erro').style.display = 'none';
   const modulos = Array.isArray(u.modulos) ? u.modulos : [];
-  renderCheckboxes(modulos);
+  const adminModulos = Array.isArray(u.admin_modulos) ? u.admin_modulos : [];
+  renderCheckboxes(modulos, adminModulos);
   document.getElementById('modal-overlay').style.display = 'flex';
 }
 
@@ -987,8 +1056,11 @@ async function salvarUsuario() {
   const email  = document.getElementById('modal-email').value.trim();
   const senha  = document.getElementById('modal-senha').value;
   const isAdmin = document.getElementById('modal-admin').checked;
-  const modulos = [...document.querySelectorAll('#modal-modulos input[type=checkbox]')]
+  const modulos = [...document.querySelectorAll('#modal-modulos input[data-modulo]')]
     .filter(cb => cb.checked).map(cb => cb.dataset.modulo);
+  const adminModulos = [...document.querySelectorAll('#modal-modulos input[data-adm-modulo]')]
+    .filter(cb => cb.checked && !cb.disabled && modulos.includes(cb.dataset.admModulo))
+    .map(cb => cb.dataset.admModulo);
   const erro = document.getElementById('modal-erro');
   const btn  = document.getElementById('modal-btn-salvar');
 
@@ -1009,7 +1081,7 @@ async function salvarUsuario() {
           'Authorization': `Bearer ${session.access_token}`,
           'apikey': SUPA_KEY,
         },
-        body: JSON.stringify({ acao: 'criar', nome, email, senha, modulos, admin: isAdmin })
+        body: JSON.stringify({ acao: 'criar', nome, email, senha, modulos, admin: isAdmin, admin_modulos: adminModulos })
       });
       const result = await resp.json();
       if (!resp.ok || result.error) throw new Error(result.error || 'Erro ao criar usuário');
@@ -1023,7 +1095,7 @@ async function salvarUsuario() {
           'apikey': SUPA_KEY,
           'Authorization': 'Bearer ' + sess.access_token,
         },
-        body: JSON.stringify({ p_uid: uid, p_meta: { nome, admin: isAdmin, modulos, email_verified: true } })
+        body: JSON.stringify({ p_uid: uid, p_meta: { nome, admin: isAdmin, modulos, admin_modulos: adminModulos, email_verified: true } })
       });
       if (!respUpd.ok) { const e = await respUpd.json(); throw new Error(e.message || 'Erro ao salvar'); }
     }
