@@ -12,21 +12,32 @@ Portal central de entrada do grupo. **Login unificado** (Supabase Auth) e **cont
 - **Código:** `index.html` (app inteiro, ~1530 linhas). Anon key exposta é por design.
 
 ## 🔑 Modelo de acesso
-Acesso mora no `user_metadata` do usuário: **`modulos`** (array de chaves) + **`admin: true`** (acessa tudo). Cada app checa a SUA chave no login.
+Acesso mora no `user_metadata` do usuário:
+- **`modulos`** (array de chaves) = apps que o usuário acessa.
+- **`admin: true`** = admin GLOBAL (acessa e administra tudo).
+- **`admin_modulos`** (array de chaves, desde 11/08/2026) = apps em que o usuário é **admin daquele app** (só faz sentido se a chave também está em `modulos`). *Enforcement é "só centralizar no Hub": os apps passam a ler `admin_modulos` quando forem tocados; hoje o Hub gerencia/mostra o dado.*
+
+Cada app checa a SUA chave no login.
 
 ### 13 chaves → app (⚠️ chave ≠ nome do app em 3 casos)
 financeiro→Dashboard · compras · assistencia · cobranca · ecommerce · **atacado→CRM** · **stonni→Portal Rep** · frete · loja · operacoes · expedicao · rede-autorizada · **varejo→Consulta Vendas**.
 Fonte da verdade: listas `APPS` + `MODULOS_LABELS` no `index.html` — **app novo entra nos DOIS**.
 
 ## Como se libera/revoga (só admin)
-Botões ⚙️ Usuários / 👥 Funcionários. Listar: RPC `admin_listar_usuarios`. Editar acesso: RPC `admin_atualizar_usuario(p_uid, p_meta)` grava `{nome,admin,modulos,email_verified}`. Criar/deletar/resetar senha: Edge `admin-usuarios` (service_role). Revogar = desmarcar módulo e salvar.
+Botões ⚙️ Usuários / 👥 Funcionários. Listar: RPC `admin_listar_usuarios` (devolve `admin_modulos` desde 11/08). Editar acesso: RPC `admin_atualizar_usuario(p_uid, p_meta)` grava `{nome,admin,modulos,admin_modulos,email_verified}` (agora com **merge** `||`, não sobrescreve mais o metadata inteiro). Criar/deletar/resetar senha: Edge `admin-usuarios` (service_role). Revogar = desmarcar módulo e salvar.
+
+No modal, cada módulo tem um toggle **🛡️ admin** (só habilita se o acesso estiver marcado) → grava em `admin_modulos`. Painel colapsável **"Admins por aplicação"** (`renderAdminsPorApp`) mostra admins globais + admins próprios de cada app.
+⚠️ **Edge `admin-usuarios` (criar) é deploy-only e ainda NÃO grava `admin_modulos`** → em usuário NOVO, definir o admin-por-app numa edição seguinte (a RPC de update grava). Atualizar a Edge é item futuro.
 
 ## Estado atual
 Em produção. Telas: Login · Portal (grid de apps por permissão) · Admin Usuários · modal Editar/Criar usuário · modal Minha Senha · modal Funcionários · indicador+modal de Sync ERP.
 
 ## Pendências / próximos passos
-- [ ] Achatar a pasta: o clone está aninhado em `bononi-hub\bononi-hub\`. A raiz externa ainda tem duplicatas/backup (`bononihubumbler.zip`, `push/`). Valiosos (supabase/, docs, README) já foram versionados no clone. Limpar a raiz: `rm -rf "C:\CLAUDE\Projetos GitHub\bononi-hub\index.html" "...\docs" "...\supabase" "...\README.md"` (o classificador bloqueia auto-delete; Leo roda).
+- [ ] **Rodar o SQL das RPCs de admin-por-app** (Supabase SQL Editor — classifier bloqueou): DROP+CREATE `admin_listar_usuarios` devolvendo `admin_modulos` + `admin_atualizar_usuario` com merge `||`. Sem isso o Hub grava mas não LÊ o admin_modulos (selos/visão consolidada ficam vazios). SQL entregue ao Leo em 11/08.
+- [ ] (Futuro) Atualizar a Edge `admin-usuarios` p/ aceitar `admin_modulos` na criação.
+- [ ] (Futuro/enforcement) Cada app ler `admin_modulos` p/ liberar suas telas de admin.
 - [ ] `financeiro`: nota "atualizar quando dasu_financeiro estiver no ar" — verificar.
+- [x] Achatar a pasta: raiz solta do Hub limpa em 11/08 (só clone + backups `push/`/`.zip`).
 
 ## Feito
 - [x] Deploy confirmado: git → push `main` → Vercel.
@@ -39,5 +50,6 @@ Em produção. Telas: Login · Portal (grid de apps por permissão) · Admin Usu
 - Arquivo único grande — quebra gradual ao mexer.
 
 ## Dev-log
+- 2026-08-11 — **Admin por aplicação (`admin_modulos`):** novo campo no `user_metadata` = apps que o usuário administra (≠ admin global). Modal ganhou toggle 🛡️ admin por módulo (só habilita com o acesso marcado); lista destaca os módulos-admin; painel colapsável "Admins por aplicação" (globais + por app). RPCs alteradas: `admin_listar_usuarios` devolve `admin_modulos`; `admin_atualizar_usuario` passou a **mesclar** o metadata (para de apagar chaves de outros apps). Enforcement = só centralizar no Hub (apps leem depois). Front commit 9f52ccd; SQL das RPCs entregue ao Leo (classifier bloqueou o DDL). Validado node --check.
 - 2026-08-11 — **Painel Usuários por grupos:** internos, representantes (módulo `stonni`) e rede autorizada (`rede-autorizada`) estavam embolados (a rede até era escondida). Agora `classificarUsuario()` separa em 3 grupos; chips de filtro com contagem (default Internos), busca mantida, etiqueta de tipo na visão "Todos". **UX:** `confirm()`/`alert()` nativos → `bononiConfirmar()` (modal) + `bononiToast()`. **Repo:** versionado `supabase/` (edge umbler-intake + migrations), README e `docs/UMBLER-FONTE-UNICA.md` que só existiam na pasta solta. Commits 91ee9d5.
 - 2026-08-11 — **Revisão de layout (todas as telas):** o Hub era tema claro com resíduos de tema escuro que quebravam a leitura. Corrigido: modal Editar Usuário era fundo escuro `#111F33` com inputs de texto escuro (texto sumia) → agora card claro; inputs do login/senha/funcionários com fundo `rgba(255,255,255,.04)` invisível no branco → `var(--input-bg)`; textos de erro/sucesso (`#fca5a5`/`#6ee7b7`) e empty/loading em cor clara sobre fundo claro → tokens `--destructive`/`--success`/`--muted`; bordas brancas-transparentes → `var(--border)`; sombras pesadas `rgba(0,0,0,.5)` → sombras Bononi suaves. Adicionados tokens de estado no `:root`. **Melhorias:** busca no painel de Usuários (input `admin-busca` que faltava), saudação do login dinâmica (Bom dia/Boa tarde/Boa noite). Também trocada a URL da Cobrança no catálogo: Lovable → `bononi-cobranca.vercel.app`. Validado node --check (sintaxe OK).
