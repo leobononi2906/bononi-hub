@@ -1,0 +1,170 @@
+// umbler-intake — Receptor ÚNICO da Umbler (Aplicação "Geral")
+//
+// Recebe eventos de TODOS os canais e grava numa fonte única:
+//   - umbler_eventos    : payload cru (nada se perde, dedup por event_id)
+//   - umbler_conversas  : conversa parseada (upsert por id_conversa)
+//   - umbler_mensagens  : mensagem parseada (upsert por event_id)
+// Cada registro é carimbado com `segmento`, resolvido pelo de-para
+// umbler_canal_segmento. Canal novo é auto-cadastrado como 'pendente'
+// (classificação depois pela tela do hub). A distribuição pras tabelas
+// de cada setor é feita a jusante, a partir dessas tabelas.
+
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const supabase = createClient(
+  Deno.env.get('SUPABASE_URL')!,
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+)
+
+function digits(v: string): string {
+  return (v || '').replace(/\D/g, '')
+}
+
+function extractTags(content: any): string[] {
+  const contactTags = Array.isArray(content?.Contact?.Tags) ? content.Contact.Tags : []
+  const chatTags = Array.isArray(content?.Tags) ? content.Tags : []
+  return [...contactTags, ...chatTags]
+    .map((tag: any) => (tag?.Name || tag?.Label || String(tag || '')).trim())
+    .filter(Boolean)
+}
+
+// Resolve o segmento pelo canal. Se o canal ainda não estiver no de-para,
+// cadastra como 'pendente' (sem sobrescrever classificação já feita).
+async function resolveSegmento(idCanal: string, nomeCanal: string): Promise<string> {
+  if (!idCanal) return 'pendente'
+  const { data } = await supabase
+    .from('umbler_canal_segmento')
+    .select('segmento')
+    .eq('id_canal', idCanal)
+    .maybeSingle()
+  if (data?.segmento) return data.segmento
+
+  await supabase.from('umbler_canal_segmento').upsert(
+    {
+      id_canal: idCanal,
+      nome_canal: nomeCanal || null,
+      segmento: 'pendente',
+      status: 'pendente',
+      auto_detectado: true,
+    },
+    { onConflict: 'id_canal', ignoreDuplicates: true }
+  )
+  return 'pendente'
+}
+
+Deno.serve(async (req) => {
+  try {
+    const body = await req.json()
+    const content = body?.Payload?.Content
+    if (!content) {
+      return json({ ok: true, skip: 'sem content' })
+    }
+
+    const telefone = digits(content?.Contact?.PhoneNumber || '')
+    const nomeContato = content?.Contact?.Name || ''
+    const nomeCanal = content?.Channel?.Name || ''
+    const idCanal = content?.Channel?.Id || ''
+    const contactId = content?.Contact?.Id || ''
+    const chatId = content?.Id || content?.LastMessage?.Chat?.Id || ''
+    const tags = extractTags(content)
+    const lastMessage = content?.LastMessage || content?.Message || null
+    const eventType = body?.Type || ''
+    const eventId = body?.EventId || `${chatId}:${lastMessage?.Id || crypto.randomUUID()}`
+    const ultimoContato = lastMessage?.EventAtUTC || content?.EventAtUTC || new Date().toISOString()
+    const memberId = content?.LastOrganizationMember?.Id || lastMessage?.SentByOrganizationMember?.Id || ''
+    const nomeAtendente =
+      content?.LastOrganizationMember?.Name || lastMessage?.SentByOrganizationMember?.Name || null
+
+    const segmento = await resolveSegmento(idCanal, nomeCanal)
+
+    // 1) CRU — nada se perde (dedup por event_id)
+    await supabase.from('umbler_eventos').upsert(
+      {
+        event_id: eventId,
+        tipo: eventType || null,
+        id_conversa: chatId || null,
+        id_contato: contactId || null,
+        telefone: telefone || null,
+        id_canal: idCanal || null,
+        nome_canal: nomeCanal || null,
+        segmento,
+        payload: body,
+      },
+      { onConflict: 'event_id', ignoreDuplicates: true }
+    )
+
+    // 2) Conversa (upsert por id_conversa)
+    if (chatId) {
+      const { error } = await supabase.from('umbler_conversas').upsert(
+        {
+          id_conversa: chatId,
+          segmento,
+          id_contato: contactId || null,
+          telefone: telefone || null,
+          nome_contato: nomeContato || null,
+          id_canal: idCanal || null,
+          nome_canal: nomeCanal || null,
+          id_membro_umbler: memberId || null,
+          nome_atendente: nomeAtendente,
+          tags,
+          aberta: typeof content?.Open === 'boolean' ? content.Open : null,
+          criada_em_umbler: content?.CreatedAtUTC || null,
+          ultima_mensagem_em: ultimoContato,
+          atualizado_em: new Date().toISOString(),
+        },
+        { onConflict: 'id_conversa' }
+      )
+      if (error) console.error('Erro ao salvar conversa:', error)
+    }
+
+    // 3) Mensagem (upsert por event_id)
+    if (eventType === 'Message' && chatId && lastMessage) {
+      const sentByMemberId = lastMessage?.SentByOrganizationMember?.Id || ''
+      const direcao = sentByMemberId ? 'empresa' : 'cliente'
+      const msgAtendente = lastMessage?.SentByOrganizationMember?.Name || nomeAtendente
+      const conteudo =
+        typeof lastMessage?.Content === 'string'
+          ? lastMessage.Content
+          : lastMessage?.Content
+          ? JSON.stringify(lastMessage.Content)
+          : null
+
+      const { error } = await supabase.from('umbler_mensagens').upsert(
+        {
+          event_id: eventId,
+          id_mensagem: lastMessage?.Id || null,
+          id_conversa: chatId,
+          segmento,
+          id_contato: contactId || null,
+          telefone: telefone || null,
+          nome_contato: nomeContato || null,
+          id_canal: idCanal || null,
+          nome_canal: nomeCanal || null,
+          id_membro_umbler: sentByMemberId || memberId || null,
+          nome_atendente: msgAtendente,
+          direcao,
+          tipo_mensagem: lastMessage?.MessageType || null,
+          conteudo,
+          arquivo: lastMessage?.File || null,
+          tags,
+          enviado_em:
+            lastMessage?.EventAtUTC || lastMessage?.CreatedAtUTC || body?.EventDate || new Date().toISOString(),
+        },
+        { onConflict: 'event_id' }
+      )
+      if (error) console.error('Erro ao salvar mensagem:', error)
+    }
+
+    return json({ ok: true, segmento, tipo: eventType, id_conversa: chatId, mensagem_salva: eventType === 'Message' })
+  } catch (err) {
+    console.error('umbler-intake erro:', err)
+    return json({ error: (err as Error).message }, 500)
+  }
+})
+
+function json(obj: unknown, status = 200): Response {
+  return new Response(JSON.stringify(obj), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  })
+}

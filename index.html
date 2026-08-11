@@ -482,6 +482,7 @@ body::before {
           + Novo Usuário
         </button>
       </div>
+      <div id="admin-grupos" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"></div>
       <input id="admin-busca" type="text" placeholder="🔍 Buscar por nome ou e-mail..." oninput="filtrarUsuarios()"
         style="width:100%;height:40px;background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:0 14px;font-size:13px;color:var(--text);font-family:'DM Sans',sans-serif;outline:none;margin-bottom:16px" />
       <div id="admin-lista" style="display:grid;gap:10px">
@@ -808,38 +809,86 @@ async function carregarUsuarios() {
       lista.innerHTML = `<div style="text-align:center;padding:32px;color:var(--muted)">Nenhum usuário encontrado</div>`;
       return;
     }
-    // Filtrar usuários da rede autorizada (sem nome interno) e guardar todos
-    window._todosUsuarios = data.filter(u => {
-      // Excluir quem tem módulo 'rede-autorizada' como único ou quem é claramente externo
-      const mods = Array.isArray(u.modulos) ? u.modulos : [];
-      const soRede = mods.length > 0 && mods.every(m => m === 'rede-autorizada');
-      const semNomeComRede = !u.nome && mods.includes('rede-autorizada');
-      return !soRede && !semNomeComRede;
-    });
-    renderUsuarios(window._todosUsuarios);
+    // Guardar todos, já classificados por grupo (interno / representante / autorizada)
+    window._todosUsuarios = (Array.isArray(data) ? data : []).map(u => ({ ...u, _grupo: classificarUsuario(u) }));
+    if (!window._grupoAtual) window._grupoAtual = 'interno';
+    renderGruposChips();
+    filtrarUsuarios();
   } catch(e) {
     lista.innerHTML = `<div style="text-align:center;padding:32px;color:#EF4444;font-size:13px">Erro: ${e.message}</div>`;
   }
 }
 
-function filtrarUsuarios() {
-  const q = (document.getElementById('admin-busca')?.value || '').toLowerCase().trim();
-  const todos = window._todosUsuarios || [];
-  const filtrados = q ? todos.filter(u =>
-    (u.nome||'').toLowerCase().includes(q) || (u.email||'').toLowerCase().includes(q)
-  ) : todos;
-  renderUsuarios(filtrados);
+// Classificação de usuário por tipo de acesso
+const _MODULOS_EXTERNOS = ['stonni', 'rede-autorizada'];
+const _GRUPOS = {
+  interno:       { label: '🏢 Internos',        vazio: 'Nenhum usuário interno.' },
+  representante: { label: '🏬 Representantes',   vazio: 'Nenhum representante (Portal Stonni).' },
+  autorizada:    { label: '🔧 Rede Autorizada',  vazio: 'Nenhum usuário da rede autorizada.' },
+};
+function classificarUsuario(u) {
+  const mods = Array.isArray(u.modulos) ? u.modulos : [];
+  if (u.admin) return 'interno';
+  if (mods.some(m => !_MODULOS_EXTERNOS.includes(m))) return 'interno'; // tem algum módulo interno
+  if (mods.includes('stonni')) return 'representante';
+  if (mods.includes('rede-autorizada')) return 'autorizada';
+  return 'interno'; // sem acesso ainda = staff interno
 }
 
-function renderUsuarios(data) {
+function selecionarGrupo(g) { window._grupoAtual = g; renderGruposChips(); filtrarUsuarios(); }
+
+function renderGruposChips() {
+  const cont = document.getElementById('admin-grupos');
+  if (!cont) return;
+  const todos = window._todosUsuarios || [];
+  const counts = { interno: 0, representante: 0, autorizada: 0 };
+  todos.forEach(u => { counts[u._grupo] = (counts[u._grupo] || 0) + 1; });
+  const chips = [
+    ['interno', _GRUPOS.interno.label],
+    ['representante', _GRUPOS.representante.label],
+    ['autorizada', _GRUPOS.autorizada.label],
+    ['todos', '👥 Todos'],
+  ];
+  const atual = window._grupoAtual || 'interno';
+  cont.innerHTML = chips.map(([g, label]) => {
+    const ativo = atual === g;
+    const n = g === 'todos' ? todos.length : (counts[g] || 0);
+    return `<button onclick="selecionarGrupo('${g}')"
+      style="height:34px;padding:0 6px 0 14px;border-radius:20px;border:1px solid ${ativo?'var(--blue)':'var(--border)'};background:${ativo?'var(--blue)':'var(--surface)'};color:${ativo?'#fff':'var(--muted)'};font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:7px">
+      ${label}<span style="font-size:11px;font-weight:700;background:${ativo?'rgba(255,255,255,0.22)':'var(--surface2)'};color:${ativo?'#fff':'var(--muted)'};padding:2px 8px;border-radius:10px">${n}</span>
+    </button>`;
+  }).join('');
+}
+
+function filtrarUsuarios() {
+  const q = (document.getElementById('admin-busca')?.value || '').toLowerCase().trim();
+  const g = window._grupoAtual || 'interno';
+  let lista = window._todosUsuarios || [];
+  if (g !== 'todos') lista = lista.filter(u => u._grupo === g);
+  if (q) lista = lista.filter(u =>
+    (u.nome||'').toLowerCase().includes(q) || (u.email||'').toLowerCase().includes(q)
+  );
+  renderUsuarios(lista, g);
+}
+
+const _TAG_GRUPO = {
+  interno:       { txt: 'Interno',        bg: 'var(--blue-pale, #E8F4FD)', fg: 'var(--blue)' },
+  representante: { txt: 'Representante',   bg: '#EEF0FE',                   fg: '#4F46E5' },
+  autorizada:    { txt: 'Rede Autorizada', bg: '#E6F7F4',                  fg: '#0F9D6E' },
+};
+function renderUsuarios(data, grupo) {
   const lista = document.getElementById('admin-lista');
   if (!data?.length) {
-    lista.innerHTML = `<div style="text-align:center;padding:32px;color:var(--muted)">Nenhum usuário encontrado</div>`;
+    const msg = (grupo && grupo !== 'todos' && _GRUPOS[grupo]) ? _GRUPOS[grupo].vazio : 'Nenhum usuário encontrado';
+    lista.innerHTML = `<div style="text-align:center;padding:32px;color:var(--muted)">${msg}</div>`;
     return;
   }
     lista.innerHTML = data.map(u => {
       const modulos = Array.isArray(u.modulos) ? u.modulos : [];
       const ultimoAcesso = u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleDateString('pt-BR') : 'Nunca';
+      const tg = _TAG_GRUPO[u._grupo] || _TAG_GRUPO.interno;
+      const tagHtml = (grupo === 'todos')
+        ? `<span style="background:${tg.bg};color:${tg.fg};font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:3px 9px;border-radius:20px">${tg.txt}</span>` : '';
       return `
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;box-shadow:0 1px 3px rgba(15,29,53,0.04)">
           <div style="display:flex;align-items:center;gap:12px;min-width:0">
@@ -852,6 +901,7 @@ function renderUsuarios(data) {
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            ${tagHtml}
             ${u.admin ? `<span style="background:#E8F4FD;color:#0077CC;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;border:1px solid #B3D9F5">ADMIN</span>`
             : modulos.length ? modulos.map(m => `<span style="background:var(--bg2);color:var(--muted);font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--border)">${m}</span>`).join('')
             : `<span style="color:var(--muted);font-size:12px">Sem acesso</span>`}
@@ -1234,7 +1284,7 @@ async function salvarFuncionario() {
 
 async function toggleAtivoFunc(id, atual) {
   const acao = atual ? 'inativar' : 'ativar';
-  if (!confirm(`Confirma ${acao} este funcionário?`)) return;
+  if (!(await bononiConfirmar(`Confirma <b>${acao}</b> este funcionário?`, { okText: acao.charAt(0).toUpperCase() + acao.slice(1), perigo: atual }))) return;
   try {
     const token = (await sb.auth.getSession()).data.session.access_token;
     await fetch(SUPA_URL + '/rest/v1/rh_funcionarios?id=eq.' + id, {
@@ -1243,13 +1293,13 @@ async function toggleAtivoFunc(id, atual) {
       body: JSON.stringify({ ativo: !atual })
     });
     await carregarFuncionarios();
-  } catch(e) { alert('Erro: ' + e.message); }
+  } catch(e) { bononiToast('Erro: ' + e.message); }
 }
 
 
 // ── Deletar Usuário ──
 async function deletarUsuario(uid, email) {
-  if (!confirm(`Excluir o login de ${email}?\n\nEsta ação remove o acesso permanentemente. O funcionário pode ser recadastrado depois.`)) return;
+  if (!(await bononiConfirmar(`Excluir o login de <b>${email}</b>?<br><span style="font-size:12px;color:var(--muted)">Remove o acesso permanentemente. O funcionário pode ser recadastrado depois.</span>`, { okText: 'Excluir', perigo: true }))) return;
   try {
     const { data: { session } } = await sb.auth.getSession();
     const resp = await fetch(`${SUPA_URL}/functions/v1/admin-usuarios`, {
@@ -1265,7 +1315,7 @@ async function deletarUsuario(uid, email) {
     if (!resp.ok || result.error) throw new Error(result.error || 'Erro ao excluir');
     await carregarUsuarios();
   } catch(e) {
-    alert('Erro: ' + e.message);
+    bononiToast('Erro: ' + e.message);
   }
 }
 
@@ -1379,6 +1429,35 @@ function abrirSyncDetalhe() {
 
 function fecharSyncDetalhe() {
   document.getElementById('sync-modal').style.display = 'none';
+}
+
+// ── Confirmação / Toast (sem confirm()/alert() nativo — quebram iOS Safari) ──
+function bononiConfirmar(mensagem, opts = {}) {
+  return new Promise(resolve => {
+    const ov = document.getElementById('confirm-overlay');
+    document.getElementById('confirm-msg').innerHTML = mensagem;
+    const btnOk = document.getElementById('confirm-ok');
+    const btnCancel = document.getElementById('confirm-cancel');
+    btnOk.textContent = opts.okText || 'Confirmar';
+    btnOk.style.background = opts.perigo ? 'var(--destructive)' : 'linear-gradient(135deg,var(--blue),#0284C7)';
+    ov.style.display = 'flex';
+    const fechar = (val) => { ov.style.display = 'none'; btnOk.onclick = null; btnCancel.onclick = null; resolve(val); };
+    btnOk.onclick = () => fechar(true);
+    btnCancel.onclick = () => fechar(false);
+  });
+}
+function bononiToast(msg, tipo = 'erro') {
+  const t = document.getElementById('bononi-toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.style.background = tipo === 'ok' ? 'var(--success)' : 'var(--destructive)';
+  t.style.display = 'block';
+  requestAnimationFrame(() => { t.style.opacity = '1'; t.style.transform = 'translateX(-50%) translateY(0)'; });
+  clearTimeout(window._toastT);
+  window._toastT = setTimeout(() => {
+    t.style.opacity = '0'; t.style.transform = 'translateX(-50%) translateY(10px)';
+    setTimeout(() => { t.style.display = 'none'; }, 300);
+  }, 2800);
 }
 
 // ── Init ──
@@ -1535,6 +1614,20 @@ init();
     </div>
   </div>
 </div>
+<!-- MODAL CONFIRMAÇÃO (substitui confirm() nativo) -->
+<div id="confirm-overlay" style="display:none;position:fixed;inset:0;z-index:1100;background:rgba(15,29,53,0.45);align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;width:100%;max-width:400px;box-shadow:0 24px 60px rgba(15,29,53,0.18)">
+    <div id="confirm-msg" style="font-size:14px;color:var(--text);line-height:1.5;margin-bottom:22px"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button id="confirm-cancel" style="height:40px;padding:0 18px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer">Cancelar</button>
+      <button id="confirm-ok" style="height:40px;padding:0 20px;background:linear-gradient(135deg,var(--blue),#0284C7);border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST (substitui alert()) -->
+<div id="bononi-toast" style="display:none;position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(10px);z-index:1200;padding:12px 20px;border-radius:10px;color:#fff;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;box-shadow:0 8px 24px rgba(15,29,53,0.25);opacity:0;transition:opacity .3s,transform .3s;max-width:90vw"></div>
+
 </body>
 </html>
 

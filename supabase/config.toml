@@ -1,0 +1,10 @@
+# Supabase — configuração de projeto (usada pela CLI)
+project_id = "vishxwdxqiygbxmtpfoy"
+
+# Receptor ÚNICO da Umbler (Aplicação "Geral").
+# Recebe webhook de TODOS os canais e grava na fonte única
+# (umbler_eventos / umbler_conversas / umbler_mensagens), carimbando o
+# segmento pelo de-para umbler_canal_segmento. Sem JWT: é chamada direto
+# pelo Umbler, como os demais webhooks da Umbler.
+[functions.umbler-intake]
+verify_jwt = false
