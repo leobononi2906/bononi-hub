@@ -444,7 +444,7 @@ body::before {
           <button onclick="fecharSyncDetalhe()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;line-height:1">×</button>
         </div>
         <div id="sync-detalhe-content" style="font-size:13px;color:var(--muted)">Carregando...</div>
-        <p style="font-size:11px;color:var(--dim);margin-top:14px;margin-bottom:0">Sincronização automática todo dia às 00:30. Sábado e domingo não são monitorados.</p>
+        <p style="font-size:11px;color:var(--dim);margin-top:14px;margin-bottom:0">Replicador próprio no servidor: incremental a cada 10 min, diário 04:00/12:30 e full aos domingos. Monitorado 24/7.</p>
       </div>
     </div>
 
@@ -455,6 +455,7 @@ body::before {
       </div>
       <button class="btn-admin" id="btn-admin" onclick="toggleAdmin()" style="display:none">⚙️ Usuários</button>
       <button class="btn-admin" id="btn-func" onclick="abrirFuncionarios()" style="display:none">👥 Funcionários</button>
+      <button class="btn-admin" id="btn-config" onclick="toggleConfig()" style="display:none">🛠️ Configuração</button>
       <button class="btn-sair" onclick="abrirModalSenha()" style="background:rgba(99,102,241,0.1);border-color:rgba(99,102,241,0.25);color:#a5b4fc">🔑 Senha</button>
       <button class="btn-sair" onclick="sair()">Sair</button>
     </div>
@@ -493,6 +494,49 @@ body::before {
         style="width:100%;height:40px;background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:0 14px;font-size:13px;color:var(--text);font-family:'DM Sans',sans-serif;outline:none;margin-bottom:16px" />
       <div id="admin-lista" style="display:grid;gap:10px">
         <div style="text-align:center;padding:32px;color:var(--muted);font-size:13px">Carregando usuários...</div>
+      </div>
+    </div>
+
+    <!-- PAINEL CONFIGURAÇÃO (cérebro) -->
+    <div id="config-panel" style="display:none;margin-top:40px">
+      <div style="margin-bottom:20px">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--blue);margin-bottom:4px">Configuração</div>
+        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800">Integrações &amp; Canais</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:4px">Saúde da replicação do ERP e classificação dos canais da Umbler.</div>
+      </div>
+
+      <!-- SEÇÃO 1: SAÚDE DA SYNC -->
+      <div style="border:1px solid var(--border);border-radius:14px;background:var(--surface);overflow:hidden;margin-bottom:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:16px">🔄</span>
+            <div>
+              <div style="font-size:14px;font-weight:700;color:var(--text)">Replicação Firebird → Supabase</div>
+              <div style="font-size:11px;color:var(--muted)">Replicador próprio no servidor · incremental a cada 10 min</div>
+            </div>
+          </div>
+          <button onclick="carregarSaudeSync()" style="height:32px;padding:0 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer">↻ Atualizar</button>
+        </div>
+        <div id="sync-saude-banner" style="padding:14px 18px;font-size:13px;color:var(--muted)">Carregando saúde…</div>
+        <div id="sync-status-tabelas" style="padding:0 18px 16px"></div>
+      </div>
+
+      <!-- SEÇÃO 2: CANAIS UMBLER -->
+      <div style="border:1px solid var(--border);border-radius:14px;background:var(--surface);overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:10px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:16px">💬</span>
+            <div>
+              <div style="font-size:14px;font-weight:700;color:var(--text)">Canais da Umbler</div>
+              <div style="font-size:11px;color:var(--muted)">Cada canal aponta para um segmento. Canal novo entra como <b>pendente</b>.</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div id="umbler-filtros" style="display:flex;gap:6px"></div>
+            <button onclick="carregarCanaisUmbler()" style="height:32px;padding:0 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer">↻ Atualizar</button>
+          </div>
+        </div>
+        <div id="umbler-canais-lista" style="padding:12px 18px 16px">Carregando canais…</div>
       </div>
     </div>
   </div>
@@ -711,7 +755,7 @@ function mostrarPortal(usuario) {
     `${saudacao()}, <span id="greeting-nome" style="color:var(--blue)">${nome.split(' ')[0]}</span> 👋`;
 
   renderApps(usuario);
-  if (usuario.admin) { document.getElementById('btn-admin').style.display = 'block'; document.getElementById('btn-func').style.display = 'block'; }
+  if (usuario.admin) { document.getElementById('btn-admin').style.display = 'block'; document.getElementById('btn-func').style.display = 'block'; document.getElementById('btn-config').style.display = 'block'; }
   verificarSync();
   setInterval(verificarSync, 5 * 60 * 1000); // re-verifica a cada 5 min
   document.getElementById('portal').classList.add('show');
@@ -766,6 +810,7 @@ function toggleAdmin() {
   const btn = document.getElementById('btn-admin');
 
   if (panel.style.display === 'none') {
+    fecharConfig();
     panel.style.display = 'block';
     appsSection.style.display = 'none';
     appsGrid.style.display = 'none';
@@ -778,6 +823,207 @@ function toggleAdmin() {
     appsGrid.style.display = '';
     sectionLabel.style.display = '';
     btn.textContent = '⚙️ Usuários';
+  }
+}
+
+// ── CONFIGURAÇÃO (cérebro) ──
+function fecharConfig() {
+  const panel = document.getElementById('config-panel');
+  if (panel && panel.style.display !== 'none') {
+    panel.style.display = 'none';
+    document.getElementById('btn-config').textContent = '🛠️ Configuração';
+  }
+}
+
+function toggleConfig() {
+  const panel = document.getElementById('config-panel');
+  const appsSection = document.querySelector('.portal-greeting');
+  const appsGrid = document.getElementById('apps-grid');
+  const sectionLabel = document.querySelector('.section-label');
+  const btn = document.getElementById('btn-config');
+
+  if (panel.style.display === 'none') {
+    // fecha o painel de usuários se estiver aberto
+    const admin = document.getElementById('admin-panel');
+    if (admin.style.display !== 'none') {
+      admin.style.display = 'none';
+      document.getElementById('btn-admin').textContent = '⚙️ Usuários';
+    }
+    panel.style.display = 'block';
+    appsSection.style.display = 'none';
+    appsGrid.style.display = 'none';
+    sectionLabel.style.display = 'none';
+    btn.textContent = '← Voltar';
+    carregarSaudeSync();
+    carregarCanaisUmbler();
+  } else {
+    panel.style.display = 'none';
+    appsSection.style.display = '';
+    appsGrid.style.display = '';
+    sectionLabel.style.display = '';
+    btn.textContent = '🛠️ Configuração';
+  }
+}
+
+// Helper: fetch REST autenticado no Supabase → array
+async function _sbGet(path) {
+  const token = (await sb.auth.getSession()).data.session?.access_token;
+  const headers = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY) };
+  const resp = await fetch(SUPA_URL + '/rest/v1/' + path, { headers });
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  return resp.json();
+}
+
+function _fmtHrAtras(dtStr) {
+  if (!dtStr) return '—';
+  const min = Math.round((Date.now() - new Date(dtStr)) / 60000);
+  if (min < 1) return 'agora';
+  if (min < 60) return 'há ' + min + ' min';
+  const h = Math.floor(min / 60);
+  if (h < 24) return 'há ' + h + 'h' + (min % 60 ? ' ' + (min % 60) + 'min' : '');
+  return 'há ' + Math.floor(h / 24) + 'd';
+}
+
+// ── Seção 1: Saúde da replicação ──
+async function carregarSaudeSync() {
+  const banner = document.getElementById('sync-saude-banner');
+  const tabelasEl = document.getElementById('sync-status-tabelas');
+  banner.innerHTML = 'Carregando saúde…';
+  tabelasEl.innerHTML = '';
+  try {
+    const [saudeArr, statusArr] = await Promise.all([
+      _sbGet('vw_rep_saude?select=*'),
+      _sbGet('vw_rep_status?select=tabela,grupo,executado_em,linhas,situacao,horas_desde,erro&order=executado_em.desc'),
+    ]);
+    const s = Array.isArray(saudeArr) ? saudeArr[0] : null;
+    const estado = (s?.estado || 'DESCONHECIDO').toUpperCase();
+    const cor = estado === 'OK' ? { bg: 'var(--success-bg)', bd: 'var(--success-bd)', fg: 'var(--success)', dot: '#0F9D6E' }
+             : estado === 'ATRASO' ? { bg: 'var(--warning-bg)', bd: 'var(--warning-bd)', fg: 'var(--warning)', dot: '#E07B00' }
+             : estado === 'ERRO' ? { bg: 'var(--destructive-bg)', bd: 'var(--destructive-bd)', fg: 'var(--destructive)', dot: '#D93025' }
+             : { bg: 'var(--surface2)', bd: 'var(--border)', fg: 'var(--muted)', dot: '#9AA5B8' };
+    banner.innerHTML =
+      `<div style="display:flex;align-items:center;gap:12px;background:${cor.bg};border:1px solid ${cor.bd};border-radius:10px;padding:12px 14px">
+        <span style="width:10px;height:10px;border-radius:50%;background:${cor.dot};flex-shrink:0"></span>
+        <div style="flex:1">
+          <div style="font-weight:700;color:${cor.fg};font-size:13px">${estado === 'OK' ? 'Tudo funcionando' : estado}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">${s?.motivo || ''} · última incremental ${_fmtHrAtras(s?.ult_incr)}${s?.erros_30min ? ' · ' + s.erros_30min + ' erro(s) em 30 min' : ''}</div>
+        </div>
+      </div>`;
+
+    if (!Array.isArray(statusArr) || !statusArr.length) {
+      tabelasEl.innerHTML = `<div style="padding:12px 0 0;font-size:12px;color:var(--muted)">Sem histórico de execução.</div>`;
+      return;
+    }
+    const linhas = statusArr.map(r => {
+      const sit = (r.situacao || '').toUpperCase();
+      const c = sit.includes('OK') || sit.includes('ATUAL') ? '#0F9D6E'
+              : sit.includes('ATRAS') ? '#E07B00'
+              : sit.includes('ERRO') || sit.includes('FALHA') ? '#D93025' : '#9AA5B8';
+      return `<tr style="border-top:1px solid var(--border)">
+        <td style="padding:8px 10px;font-size:12px;color:var(--text);font-weight:600">${r.tabela || '—'}</td>
+        <td style="padding:8px 10px;font-size:11px;color:var(--muted)">${r.grupo || '—'}</td>
+        <td style="padding:8px 10px;font-size:12px;color:var(--muted);text-align:right">${(r.linhas ?? 0).toLocaleString('pt-BR')}</td>
+        <td style="padding:8px 10px;font-size:11px;color:var(--muted);white-space:nowrap">${_fmtHrAtras(r.executado_em)}</td>
+        <td style="padding:8px 10px"><span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;color:${c};background:${c}18">${r.situacao || '—'}</span>${r.erro ? `<div style="font-size:10px;color:var(--destructive);margin-top:2px" title="${(r.erro||'').replace(/"/g,'&quot;')}">${(r.erro||'').slice(0,60)}</div>` : ''}</td>
+      </tr>`;
+    }).join('');
+    tabelasEl.innerHTML =
+      `<div style="overflow-x:auto;margin-top:12px;border:1px solid var(--border);border-radius:10px">
+        <table style="width:100%;border-collapse:collapse;min-width:520px">
+          <thead><tr style="background:var(--surface2)">
+            <th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">Tabela</th>
+            <th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">Grupo</th>
+            <th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">Linhas</th>
+            <th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">Executado</th>
+            <th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">Situação</th>
+          </tr></thead>
+          <tbody>${linhas}</tbody>
+        </table>
+      </div>`;
+  } catch (e) {
+    banner.innerHTML = `<div style="color:var(--destructive);font-size:13px">Erro ao ler a saúde da sync: ${e.message}</div>`;
+  }
+}
+
+// ── Seção 2: Canais Umbler ──
+const UMBLER_SEGMENTOS = ['atacado','varejo','assistencia','financeiro','ecommerce','pendente'];
+const UMBLER_SEG_COR = { atacado:'#1A3A8F', varejo:'#0077CC', assistencia:'#0F9D6E', financeiro:'#E07B00', ecommerce:'#7C3AED', pendente:'#9AA5B8' };
+let _umblerCanais = [];
+let _umblerFiltro = 'todos';
+
+async function carregarCanaisUmbler() {
+  const lista = document.getElementById('umbler-canais-lista');
+  lista.innerHTML = 'Carregando canais…';
+  try {
+    _umblerCanais = await _sbGet('umbler_canais_resumo?select=*&order=status.asc,mensagens.desc');
+    renderFiltrosUmbler();
+    renderCanaisUmbler();
+  } catch (e) {
+    lista.innerHTML = `<div style="color:var(--destructive);font-size:13px">Erro ao ler canais: ${e.message}</div>`;
+  }
+}
+
+function renderFiltrosUmbler() {
+  const box = document.getElementById('umbler-filtros');
+  const pend = _umblerCanais.filter(c => c.segmento === 'pendente' || c.status === 'pendente').length;
+  const filtros = [
+    { key:'todos', label:'Todos', n:_umblerCanais.length },
+    { key:'pendente', label:'Pendentes', n:pend },
+  ];
+  box.innerHTML = filtros.map(f => {
+    const on = _umblerFiltro === f.key;
+    return `<button onclick="setFiltroUmbler('${f.key}')" style="height:32px;padding:0 12px;border-radius:8px;font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;border:1px solid ${on?'var(--blue)':'var(--border)'};background:${on?'var(--blue)':'var(--surface2)'};color:${on?'#fff':'var(--muted)'}">${f.label}${f.n?` (${f.n})`:''}</button>`;
+  }).join('');
+}
+
+function setFiltroUmbler(k) { _umblerFiltro = k; renderFiltrosUmbler(); renderCanaisUmbler(); }
+
+function renderCanaisUmbler() {
+  const lista = document.getElementById('umbler-canais-lista');
+  let dados = _umblerCanais;
+  if (_umblerFiltro === 'pendente') dados = dados.filter(c => c.segmento === 'pendente' || c.status === 'pendente');
+  if (!dados.length) { lista.innerHTML = `<div style="padding:16px 0;font-size:13px;color:var(--muted)">Nenhum canal ${_umblerFiltro==='pendente'?'pendente':''}.</div>`; return; }
+  lista.innerHTML = dados.map(c => {
+    const seg = c.segmento || 'pendente';
+    const cor = UMBLER_SEG_COR[seg] || '#9AA5B8';
+    const opts = UMBLER_SEGMENTOS.map(s => `<option value="${s}"${s===seg?' selected':''}>${s}</option>`).join('');
+    const vol = `${(c.mensagens||0).toLocaleString('pt-BR')} msg · ${(c.eventos||0).toLocaleString('pt-BR')} ev`;
+    return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--border);flex-wrap:wrap">
+      <span style="width:8px;height:8px;border-radius:50%;background:${cor};flex-shrink:0"></span>
+      <div style="flex:1;min-width:160px">
+        <div style="font-size:13px;font-weight:600;color:var(--text)">${c.nome_canal || '(sem nome)'} ${c.ativo===false?'<span style=\"font-size:10px;color:var(--muted)\">· inativo</span>':''}</div>
+        <div style="font-size:11px;color:var(--muted)">${vol}${c.ultimo_em?' · último '+_fmtHrAtras(c.ultimo_em):''}${c.classificado_por?' · por '+c.classificado_por:''}</div>
+      </div>
+      <select id="seg-${c.id_canal}" style="height:36px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:var(--input-bg);font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text);cursor:pointer">${opts}</select>
+      <button onclick="classificarCanal('${c.id_canal}')" style="height:36px;padding:0 14px;background:linear-gradient(135deg,var(--blue),#0284C7);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">Salvar</button>
+    </div>`;
+  }).join('');
+}
+
+async function classificarCanal(idCanal) {
+  const sel = document.getElementById('seg-' + idCanal);
+  const btn = sel?.nextElementSibling;
+  const segmento = sel.value;
+  if (btn) { btn.textContent = '…'; btn.disabled = true; }
+  try {
+    const token = (await sb.auth.getSession()).data.session?.access_token;
+    const meta = sb.auth.getUser ? (await sb.auth.getUser()).data?.user?.user_metadata : null;
+    const resp = await fetch(SUPA_URL + '/rest/v1/rpc/umbler_classificar_canal', {
+      method: 'POST',
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_id_canal: idCanal, p_segmento: segmento, p_por: meta?.nome || 'hub' }),
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status + ' ' + (await resp.text()).slice(0,120));
+    const r = await resp.json();
+    if (btn) { btn.textContent = '✓'; btn.style.background = '#0F9D6E'; }
+    // atualiza estado local e re-renderiza (re-carimba histórico já foi feito no banco)
+    const c = _umblerCanais.find(x => x.id_canal === idCanal);
+    if (c) { c.segmento = segmento; c.status = segmento === 'pendente' ? 'pendente' : 'classificado'; }
+    setTimeout(() => { renderFiltrosUmbler(); renderCanaisUmbler(); }, 700);
+  } catch (e) {
+    if (btn) { btn.textContent = 'Erro'; btn.style.background = 'var(--destructive)'; btn.disabled = false; }
+    console.error('classificarCanal', e);
+    alert('Erro ao classificar canal: ' + e.message);
   }
 }
 
@@ -1376,111 +1622,87 @@ async function deletarUsuario(uid, email) {
 }
 
 
-// ── Indicador de Sync ERP ──────────────────────────────────────
-const SYNC_VIEWS = [
-  { nome: 'Faturamento',  query: "vw_comercial_docs_faturados?select=data_faturamento&order=data_faturamento.desc&limit=1" },
-  { nome: 'Produtos',     query: "vw_fb_produtos_compras?select=dt_atualizacao&order=dt_atualizacao.desc&limit=1" },
-  { nome: 'CR (Receber)', query: "vw_fin_cr?select=dt_vencimento&order=dt_vencimento.desc&limit=1" },
-  { nome: 'Mov. RD',      query: "vw_fb_mov_grupo_rd?select=dt_movimento&order=dt_movimento.desc&limit=1" },
-  { nome: 'Colaborador',  query: "vw_dim_colaborador?select=dt_admissao&order=dt_admissao.desc&limit=1" },
-];
-
+// ── Indicador de Sync ERP (lê a saúde do replicador próprio) ───────
+// Fonte: vw_rep_saude (estado geral) + vw_rep_status (por tabela).
 async function verificarSync() {
   const ind = document.getElementById('sync-indicator');
   const dot = document.getElementById('sync-dot');
   const lbl = document.getElementById('sync-label');
   if (!ind) return;
 
-  // Sábado (6) e domingo (0) — não monitorar
-  const diaSemana = new Date().getDay();
-  if (diaSemana === 0 || diaSemana === 6) {
-    ind.style.display = 'flex';
-    ind.className = 'sync-skip';
-    dot.style.background = '#94A3B8';
-    lbl.textContent = 'Sync — fim de semana';
-    return;
-  }
-
   try {
     const token = (await sb.auth.getSession()).data.session?.access_token;
     if (!token) return;
     const headers = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + token };
-    const agora = new Date();
-    const resultados = [];
+    const resp = await fetch(SUPA_URL + '/rest/v1/vw_rep_saude?select=*', { headers });
+    const data = await resp.json();
+    const s = Array.isArray(data) ? data[0] : null;
+    const estado = (s?.estado || 'DESCONHECIDO').toUpperCase();
 
-    for (const v of SYNC_VIEWS) {
-      try {
-        const resp = await fetch(SUPA_URL + '/rest/v1/' + v.query, { headers });
-        const data = await resp.json();
-        const row = Array.isArray(data) ? data[0] : null;
-        // Pegar qualquer campo de data do resultado
-        const dtStr = row ? Object.values(row)[0] : null;
-        const dt = dtStr ? new Date(dtStr) : null;
-        const horas = dt ? (agora - dt) / 3600000 : null;
-        resultados.push({ nome: v.nome, dt, horas, ok: horas !== null && horas <= 24 });
-      } catch(e) {
-        resultados.push({ nome: v.nome, dt: null, horas: null, ok: false });
-      }
-    }
-
-    const todosOk = resultados.every(r => r.ok);
-    const algumOk = resultados.some(r => r.ok);
-    const maxHoras = Math.max(...resultados.filter(r => r.horas).map(r => r.horas));
+    window._syncSaude = s;
 
     ind.style.display = 'flex';
-    if (todosOk) {
+    dot.style.animation = '';
+    if (estado === 'OK') {
       ind.className = 'sync-ok';
       dot.style.background = '#16A34A';
       lbl.textContent = 'ERP sincronizado';
-    } else if (algumOk) {
+    } else if (estado === 'ATRASO') {
       ind.className = 'sync-warn';
       dot.style.background = '#D97706';
-      lbl.textContent = 'Sync parcial';
-    } else {
+      lbl.textContent = 'Sync atrasado';
+    } else if (estado === 'ERRO') {
       ind.className = 'sync-error';
       dot.style.background = '#DC2626';
       dot.style.animation = 'pulse-red 1.5s infinite';
-      lbl.textContent = 'Sync atrasado!';
+      lbl.textContent = 'Sync com erro';
+    } else {
+      ind.className = 'sync-skip';
+      dot.style.background = '#94A3B8';
+      lbl.textContent = 'Sync — sem status';
     }
-
-    // Guardar para o modal
-    window._syncResultados = resultados;
-    window._syncMaxHoras = maxHoras;
-
   } catch(e) {
     console.error('Erro ao verificar sync:', e);
   }
 }
 
-function abrirSyncDetalhe() {
+async function abrirSyncDetalhe() {
   const modal = document.getElementById('sync-modal');
   const content = document.getElementById('sync-detalhe-content');
   modal.style.display = 'flex';
+  content.innerHTML = 'Carregando…';
 
-  const diaSemana = new Date().getDay();
-  if (diaSemana === 0 || diaSemana === 6) {
-    content.innerHTML = '<p style="color:var(--muted)">Monitoramento suspenso aos finais de semana.</p>';
-    return;
+  try {
+    const token = (await sb.auth.getSession()).data.session?.access_token;
+    const headers = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY) };
+    const [saudeArr, statusArr] = await Promise.all([
+      fetch(SUPA_URL + '/rest/v1/vw_rep_saude?select=*', { headers }).then(r => r.json()),
+      fetch(SUPA_URL + '/rest/v1/vw_rep_status?select=tabela,grupo,executado_em,linhas,situacao,erro&order=executado_em.desc', { headers }).then(r => r.json()),
+    ]);
+    const s = Array.isArray(saudeArr) ? saudeArr[0] : null;
+    const estado = (s?.estado || 'DESCONHECIDO').toUpperCase();
+    const cor = estado === 'OK' ? '#16A34A' : estado === 'ATRASO' ? '#D97706' : estado === 'ERRO' ? '#DC2626' : '#94A3B8';
+    let html = `<div style="padding:10px 12px;border-radius:8px;margin-bottom:12px;background:${cor}14;border:1px solid ${cor}40">
+        <span style="font-weight:700;color:${cor}">${estado === 'OK' ? '✅ Tudo funcionando' : estado === 'ATRASO' ? '⚠️ Atrasado' : estado === 'ERRO' ? '❌ Com erro' : 'Sem status'}</span>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${s?.motivo || ''} · última incremental ${_fmtHrAtras(s?.ult_incr)}${s?.erros_30min ? ' · ' + s.erros_30min + ' erro(s)/30min' : ''}</div>
+      </div>`;
+    const res = Array.isArray(statusArr) ? statusArr : [];
+    if (res.length) {
+      html += res.map(r => {
+        const sit = (r.situacao || '').toUpperCase();
+        const ok = sit.includes('OK') || sit.includes('ATUAL');
+        const c = ok ? '#16A34A' : sit.includes('ATRAS') ? '#D97706' : '#DC2626';
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:8px;margin-bottom:6px;background:${c}0D;border:1px solid ${c}33">
+          <div><span style="font-weight:600;color:var(--text);font-size:13px">${r.tabela || '—'}</span>
+          <div style="font-size:10px;color:var(--muted)">${r.grupo || ''} · ${(r.linhas ?? 0).toLocaleString('pt-BR')} linhas${r.erro ? ' · ' + (r.erro||'').slice(0,40) : ''}</div></div>
+          <span style="font-size:11px;font-weight:700;color:${c};white-space:nowrap">${r.situacao || '—'}<br><span style="font-weight:400;color:var(--muted)">${_fmtHrAtras(r.executado_em)}</span></span>
+        </div>`;
+      }).join('');
+    }
+    content.innerHTML = html;
+  } catch (e) {
+    content.innerHTML = `<p style="color:var(--destructive)">Erro ao ler saúde: ${e.message}</p>`;
   }
-
-  const res = window._syncResultados || [];
-  if (!res.length) { content.innerHTML = 'Carregando...'; return; }
-
-  content.innerHTML = res.map(r => {
-    var cor   = r.ok ? '#16A34A' : '#DC2626';
-    var bg    = r.ok ? '#F0FDF4' : '#FEF2F2';
-    var bdr   = r.ok ? '#BBF7D0' : '#FECACA';
-    var icone = r.ok ? '✅' : '❌';
-    var hLabel = r.horas != null ? (r.horas < 1 ? 'Menos de 1h atrás' : Math.round(r.horas) + 'h atrás') : 'Sem dados';
-    var dtLabel = r.dt ? r.dt.toLocaleString('pt-BR') : '—';
-    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:8px;margin-bottom:8px;background:' + bg + ';border:1px solid ' + bdr + '">' +
-      '<div>' +
-        '<span style="font-weight:600;color:var(--text)">' + icone + ' ' + r.nome + '</span>' +
-        '<div style="font-size:11px;color:var(--muted);margin-top:2px">Último dado: ' + dtLabel + '</div>' +
-      '</div>' +
-      '<span style="font-size:12px;font-weight:700;color:' + cor + '">' + hLabel + '</span>' +
-    '</div>';
-  }).join('');
 }
 
 function fecharSyncDetalhe() {
