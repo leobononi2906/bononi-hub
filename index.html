@@ -949,13 +949,22 @@ async function carregarSaudeSync() {
 const UMBLER_SEGMENTOS = ['atacado','varejo','assistencia','financeiro','ecommerce','pendente'];
 const UMBLER_SEG_COR = { atacado:'#1A3A8F', varejo:'#0077CC', assistencia:'#0F9D6E', financeiro:'#E07B00', ecommerce:'#7C3AED', pendente:'#9AA5B8' };
 let _umblerCanais = [];
+let _umblerNaoVinc = [];
 let _umblerFiltro = 'todos';
+
+const _ehAtivo = c => c.ativo !== false;
+const _ehPendente = c => c.segmento === 'pendente' || c.status === 'pendente';
 
 async function carregarCanaisUmbler() {
   const lista = document.getElementById('umbler-canais-lista');
   lista.innerHTML = 'Carregando canais…';
   try {
-    _umblerCanais = await _sbGet('umbler_canais_resumo?select=*&order=status.asc,mensagens.desc');
+    const [mapeados, naoVinc] = await Promise.all([
+      _sbGet('umbler_canais_resumo?select=*&order=status.asc,mensagens.desc'),
+      _sbGet('vw_umbler_canais_nao_vinculados?select=*&order=eventos.desc'),
+    ]);
+    _umblerCanais = Array.isArray(mapeados) ? mapeados : [];
+    _umblerNaoVinc = Array.isArray(naoVinc) ? naoVinc : [];
     renderFiltrosUmbler();
     renderCanaisUmbler();
   } catch (e) {
@@ -965,10 +974,12 @@ async function carregarCanaisUmbler() {
 
 function renderFiltrosUmbler() {
   const box = document.getElementById('umbler-filtros');
-  const pend = _umblerCanais.filter(c => c.segmento === 'pendente' || c.status === 'pendente').length;
+  const ativos = _umblerCanais.filter(_ehAtivo);
   const filtros = [
-    { key:'todos', label:'Todos', n:_umblerCanais.length },
-    { key:'pendente', label:'Pendentes', n:pend },
+    { key:'todos',    label:'Todos',          n: ativos.length },
+    { key:'pendente', label:'Pendentes',      n: ativos.filter(_ehPendente).length },
+    { key:'inativo',  label:'Inativos',       n: _umblerCanais.filter(c => c.ativo === false).length },
+    { key:'novo',     label:'Não vinculados', n: _umblerNaoVinc.length },
   ];
   box.innerHTML = filtros.map(f => {
     const on = _umblerFiltro === f.key;
@@ -980,22 +991,50 @@ function setFiltroUmbler(k) { _umblerFiltro = k; renderFiltrosUmbler(); renderCa
 
 function renderCanaisUmbler() {
   const lista = document.getElementById('umbler-canais-lista');
+
+  // Aba "Não vinculados": teve contato nos últimos 60 dias mas está fora do de-para.
+  if (_umblerFiltro === 'novo') {
+    if (!_umblerNaoVinc.length) {
+      lista.innerHTML = `<div style="padding:16px 0;font-size:13px;color:var(--muted)">Nenhum canal com contato nos últimos 60 dias fora da lista. 👍</div>`;
+      return;
+    }
+    lista.innerHTML = _umblerNaoVinc.map(c => `
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--border);flex-wrap:wrap">
+        <span style="width:8px;height:8px;border-radius:50%;background:#E07B00;flex-shrink:0"></span>
+        <div style="flex:1;min-width:160px">
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${c.nome_canal || '(sem nome)'}</div>
+          <div style="font-size:11px;color:var(--muted)">${(c.eventos||0).toLocaleString('pt-BR')} ev${c.ultimo_em?' · último '+_fmtHrAtras(c.ultimo_em):''} · fora da lista</div>
+        </div>
+        <button onclick="adicionarNaoVinculado('${c.id_canal}')" style="height:36px;padding:0 14px;background:linear-gradient(135deg,var(--blue),#0284C7);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">+ Adicionar à lista</button>
+      </div>`).join('');
+    return;
+  }
+
   let dados = _umblerCanais;
-  if (_umblerFiltro === 'pendente') dados = dados.filter(c => c.segmento === 'pendente' || c.status === 'pendente');
-  if (!dados.length) { lista.innerHTML = `<div style="padding:16px 0;font-size:13px;color:var(--muted)">Nenhum canal ${_umblerFiltro==='pendente'?'pendente':''}.</div>`; return; }
+  if (_umblerFiltro === 'inativo')       dados = dados.filter(c => c.ativo === false);
+  else if (_umblerFiltro === 'pendente') dados = dados.filter(c => _ehAtivo(c) && _ehPendente(c));
+  else                                   dados = dados.filter(_ehAtivo); // 'todos' = só ativos
+
+  if (!dados.length) { lista.innerHTML = `<div style="padding:16px 0;font-size:13px;color:var(--muted)">Nenhum canal aqui.</div>`; return; }
+
   lista.innerHTML = dados.map(c => {
     const seg = c.segmento || 'pendente';
     const cor = UMBLER_SEG_COR[seg] || '#9AA5B8';
+    const inativo = c.ativo === false;
     const opts = UMBLER_SEGMENTOS.map(s => `<option value="${s}"${s===seg?' selected':''}>${s}</option>`).join('');
     const vol = `${(c.mensagens||0).toLocaleString('pt-BR')} msg · ${(c.eventos||0).toLocaleString('pt-BR')} ev`;
-    return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--border);flex-wrap:wrap">
+    const btnAtivo = inativo
+      ? `<button onclick="setCanalAtivo('${c.id_canal}',true)" title="Voltar pra lista" style="height:36px;padding:0 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--blue);font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer">↩ Restaurar</button>`
+      : `<button onclick="setCanalAtivo('${c.id_canal}',false)" title="Tirar da lista principal" style="height:36px;padding:0 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer">✕ Remover</button>`;
+    return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--border);flex-wrap:wrap;${inativo?'opacity:.6':''}">
       <span style="width:8px;height:8px;border-radius:50%;background:${cor};flex-shrink:0"></span>
       <div style="flex:1;min-width:160px">
-        <div style="font-size:13px;font-weight:600;color:var(--text)">${c.nome_canal || '(sem nome)'} ${c.ativo===false?'<span style=\"font-size:10px;color:var(--muted)\">· inativo</span>':''}</div>
+        <div style="font-size:13px;font-weight:600;color:var(--text)">${c.nome_canal || '(sem nome)'} ${inativo?'<span style=\"font-size:10px;color:var(--muted)\">· inativo</span>':''}</div>
         <div style="font-size:11px;color:var(--muted)">${vol}${c.ultimo_em?' · último '+_fmtHrAtras(c.ultimo_em):''}${c.classificado_por?' · por '+c.classificado_por:''}</div>
       </div>
       <select id="seg-${c.id_canal}" style="height:36px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:var(--input-bg);font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text);cursor:pointer">${opts}</select>
       <button onclick="classificarCanal('${c.id_canal}')" style="height:36px;padding:0 14px;background:linear-gradient(135deg,var(--blue),#0284C7);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">Salvar</button>
+      ${btnAtivo}
     </div>`;
   }).join('');
 }
@@ -1024,6 +1063,44 @@ async function classificarCanal(idCanal) {
     if (btn) { btn.textContent = 'Erro'; btn.style.background = 'var(--destructive)'; btn.disabled = false; }
     console.error('classificarCanal', e);
     alert('Erro ao classificar canal: ' + e.message);
+  }
+}
+
+// Remover (ativo=false) / restaurar (ativo=true) canal na lista.
+async function setCanalAtivo(idCanal, ativo) {
+  try {
+    const token = (await sb.auth.getSession()).data.session?.access_token;
+    const resp = await fetch(SUPA_URL + '/rest/v1/rpc/umbler_set_canal_ativo', {
+      method: 'POST',
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_id_canal: idCanal, p_ativo: ativo }),
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status + ' ' + (await resp.text()).slice(0,120));
+    const c = _umblerCanais.find(x => x.id_canal === idCanal);
+    if (c) c.ativo = ativo;
+    renderFiltrosUmbler(); renderCanaisUmbler();
+  } catch (e) {
+    console.error('setCanalAtivo', e);
+    alert('Erro ao ' + (ativo ? 'restaurar' : 'remover') + ' canal: ' + e.message);
+  }
+}
+
+// Adicionar à lista um canal "não vinculado" (entra como pendente no de-para).
+async function adicionarNaoVinculado(idCanal) {
+  try {
+    const token = (await sb.auth.getSession()).data.session?.access_token;
+    const meta = sb.auth.getUser ? (await sb.auth.getUser()).data?.user?.user_metadata : null;
+    const resp = await fetch(SUPA_URL + '/rest/v1/rpc/umbler_classificar_canal', {
+      method: 'POST',
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_id_canal: idCanal, p_segmento: 'pendente', p_por: meta?.nome || 'hub' }),
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status + ' ' + (await resp.text()).slice(0,120));
+    await carregarCanaisUmbler();   // recarrega mapeados + não-vinculados
+    setFiltroUmbler('pendente');    // mostra onde ele caiu pra você classificar
+  } catch (e) {
+    console.error('adicionarNaoVinculado', e);
+    alert('Erro ao adicionar canal: ' + e.message);
   }
 }
 
