@@ -9,7 +9,7 @@ Portal central de entrada do grupo. **Login unificado** (Supabase Auth) e **cont
 - **Clone real (git):** C:\CLAUDE\Projetos GitHub\bononi-hub\bononi-hub  (remote `leobononi2906/bononi-hub`, branch `main`)
   ⚠️ A pasta externa `bononi-hub\` é stub solto (sem git) — não editar lá.
 - **Deploy:** https://bononi-hub.vercel.app · **push na `main` = produção** (Vercel auto).
-- **Código:** `index.html` (app inteiro, ~1530 linhas). Anon key exposta é por design.
+- **Código:** `index.html` (app inteiro, ~1930 linhas). Anon key exposta é por design.
 
 ## 🔑 Modelo de acesso
 Acesso mora no `user_metadata` do usuário:
