@@ -585,12 +585,12 @@ const APPS = [
     url: 'https://bononi-compras.vercel.app/',
   },
   {
-    id: 'assistencia',
-    nome: 'Assistência Técnica',
-    desc: 'Ordens de serviço, peças e indicadores de assistência',
+    id: 'assistencia-stonni',
+    nome: 'Assistencia Stonni',
+    desc: 'Portal de assistência Stonni — gestão e rede autorizada',
     icon: '🔧', cor: 'ic-orange',
     acesso: 'assistencia',
-    url: 'https://assistencia.vercel.app/',
+    url: 'https://stonni-assistencia.vercel.app/',
   },
   {
     id: 'cobranca',
@@ -609,16 +609,8 @@ const APPS = [
     url: 'https://bononiecommerce.vercel.app/',
   },
   {
-    id: 'atacado',
-    nome: 'Atacado / CRM',
-    desc: 'CRM de clientes, gestão de carteira e representantes',
-    icon: '🚚', cor: 'ic-teal',
-    acesso: 'atacado',
-    url: 'https://stonnicrn.vercel.app/',
-  },
-  {
     id: 'com-stonni',
-    nome: 'Portal Stonni',
+    nome: 'Comercial Stonni',
     desc: 'Portal de representantes, catálogo, pedidos e gestão comercial',
     icon: '🏬', cor: 'ic-indigo',
     acesso: 'stonni',
@@ -639,14 +631,6 @@ const APPS = [
     icon: '🏪', cor: 'ic-pink',
     acesso: 'loja',
     url: 'https://bononiloja.vercel.app/vendas',
-  },
-  {
-    id: 'operacoes',
-    nome: 'Operações',
-    desc: 'Tickets, coletas, entregas e auditoria de frete',
-    icon: '🚚', cor: 'ic-orange',
-    acesso: 'operacoes',
-    url: 'https://bononi-operacoes.vercel.app/',
   },
   {
     id: 'expedicao',
@@ -831,7 +815,7 @@ async function carregarUsuarios() {
 const _MODULOS_EXTERNOS = ['stonni', 'rede-autorizada'];
 const _GRUPOS = {
   interno:       { label: '🏢 Internos',        vazio: 'Nenhum usuário interno.' },
-  representante: { label: '🏬 Representantes',   vazio: 'Nenhum representante (Portal Stonni).' },
+  representante: { label: '🏬 Representantes',   vazio: 'Nenhum representante (Comercial Stonni).' },
   autorizada:    { label: '🔧 Rede Autorizada',  vazio: 'Nenhum usuário da rede autorizada.' },
 };
 function classificarUsuario(u) {
@@ -965,7 +949,7 @@ function renderUsuarios(data, grupo) {
 const MODULOS_LABELS = {
   financeiro: '📊 Financeiro', compras: '📦 Compras', assistencia: '🔧 Assistência',
   cobranca: '📋 Cobrança', ecommerce: '🛒 E-commerce', atacado: '🚚 Atacado',
-  frete: '📍 Frete', loja: '🏪 Loja', stonni: '🏬 Portal Stonni', operacoes: '🚚 Operações', expedicao: '📦 Expedição', 'rede-autorizada': '🔧 Rede Autorizada', varejo: '📈 Consulta Vendas'
+  frete: '📍 Frete', loja: '🏪 Loja', stonni: '🏬 Comercial Stonni', operacoes: '🚚 Operações', expedicao: '📦 Expedição', 'rede-autorizada': '🔧 Rede Autorizada', varejo: '📈 Consulta Vendas'
 };
 
 function renderCheckboxes(modulosMarcados = [], adminMarcados = []) {
