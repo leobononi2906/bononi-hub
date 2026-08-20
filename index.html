@@ -521,11 +521,21 @@ body::before {
         <div id="sync-status-tabelas" style="padding:0 18px 16px"></div>
       </div>
 
-      <!-- SEÇÃO 2: CANAIS UMBLER -->
-      <div style="border:1px solid var(--border);border-radius:14px;background:var(--surface);overflow:hidden">
+      <!-- SEÇÃO 2: UMBLER (Canais + Usuários) -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="font-size:16px">💬</span>
+        <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--text)">Umbler</div>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:12px">
+        <button id="umbler-sub-btn-canais" onclick="setUmblerSub('canais')" style="height:34px;padding:0 14px;border-radius:8px;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">📡 Canais</button>
+        <button id="umbler-sub-btn-usuarios" onclick="setUmblerSub('usuarios')" style="height:34px;padding:0 14px;border-radius:8px;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">👤 Usuários</button>
+      </div>
+
+      <!-- Subaba CANAIS -->
+      <div id="umbler-sub-canais" style="border:1px solid var(--border);border-radius:14px;background:var(--surface);overflow:hidden">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:10px">
           <div style="display:flex;align-items:center;gap:10px">
-            <span style="font-size:16px">💬</span>
+            <span style="font-size:16px">📡</span>
             <div>
               <div style="font-size:14px;font-weight:700;color:var(--text)">Canais da Umbler</div>
               <div style="font-size:11px;color:var(--muted)">Cada canal aponta para um segmento. Canal novo entra como <b>pendente</b>.</div>
@@ -537,6 +547,24 @@ body::before {
           </div>
         </div>
         <div id="umbler-canais-lista" style="padding:12px 18px 16px">Carregando canais…</div>
+      </div>
+
+      <!-- Subaba USUÁRIOS -->
+      <div id="umbler-sub-usuarios" style="display:none;border:1px solid var(--border);border-radius:14px;background:var(--surface);overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:10px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:16px">👤</span>
+            <div>
+              <div style="font-size:14px;font-weight:700;color:var(--text)">Usuários da Umbler</div>
+              <div style="font-size:11px;color:var(--muted)">Cada atendente (membro da Umbler) vinculado à pessoa do ERP. É a base dos relatórios por atendente.</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div id="umbler-usuarios-filtros" style="display:flex;gap:6px"></div>
+            <button onclick="carregarUsuariosUmbler()" style="height:32px;padding:0 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer">↻ Atualizar</button>
+          </div>
+        </div>
+        <div id="umbler-usuarios-lista" style="padding:12px 18px 16px">Carregando usuários…</div>
       </div>
     </div>
   </div>
@@ -855,6 +883,7 @@ function toggleConfig() {
     sectionLabel.style.display = 'none';
     btn.textContent = '← Voltar';
     carregarSaudeSync();
+    setUmblerSub('canais');   // inicializa a subnav Umbler (Canais ativo)
     carregarCanaisUmbler();
   } else {
     panel.style.display = 'none';
@@ -1103,6 +1132,175 @@ async function adicionarNaoVinculado(idCanal) {
     alert('Erro ao adicionar canal: ' + e.message);
   }
 }
+
+// ── Seção 2b: Usuários Umbler (atendentes/membros) ──
+let _umblerUsuarios = [];
+let _umblerUsrNaoVinc = [];
+let _umblerUsrFiltro = 'todos';
+let _erpPessoas = null;   // cache rh_funcionarios ativos (só com id ERP)
+
+function setUmblerSub(sub) {
+  const ehUsr = sub === 'usuarios';
+  document.getElementById('umbler-sub-canais').style.display   = ehUsr ? 'none' : '';
+  document.getElementById('umbler-sub-usuarios').style.display = ehUsr ? '' : 'none';
+  const on = { bg:'var(--blue)', fg:'#fff', bd:'var(--blue)' };
+  const off = { bg:'var(--surface2)', fg:'var(--muted)', bd:'var(--border)' };
+  const est = (b, s) => { b.style.background=s.bg; b.style.color=s.fg; b.style.border='1px solid '+s.bd; };
+  est(document.getElementById('umbler-sub-btn-canais'),   ehUsr?off:on);
+  est(document.getElementById('umbler-sub-btn-usuarios'), ehUsr?on:off);
+  if (ehUsr && !_umblerUsuarios.length && !_umblerUsrNaoVinc.length) carregarUsuariosUmbler();
+}
+
+async function carregarUsuariosUmbler() {
+  const lista = document.getElementById('umbler-usuarios-lista');
+  lista.innerHTML = 'Carregando usuários…';
+  try {
+    const [cadastrados, naoVinc, pessoas] = await Promise.all([
+      _sbGet('vw_umbler_usuarios_resumo?select=*&order=mensagens.desc'),
+      _sbGet('vw_umbler_usuarios_nao_vinculados?select=*&order=mensagens.desc'),
+      _erpPessoas ? Promise.resolve(_erpPessoas)
+        : _sbGet('rh_funcionarios?select=id_colaborador_erp,nome,cargo&ativo=eq.true&order=nome.asc'),
+    ]);
+    _umblerUsuarios   = Array.isArray(cadastrados) ? cadastrados : [];
+    _umblerUsrNaoVinc = Array.isArray(naoVinc) ? naoVinc : [];
+    _erpPessoas = (Array.isArray(pessoas) ? pessoas : []).filter(p => p.id_colaborador_erp != null);
+    renderFiltrosUsuarios();
+    renderUsuariosUmbler();
+  } catch (e) {
+    lista.innerHTML = `<div style="color:var(--destructive);font-size:13px">Erro ao ler usuários: ${e.message}</div>`;
+  }
+}
+
+function renderFiltrosUsuarios() {
+  const box = document.getElementById('umbler-usuarios-filtros');
+  const ativos = _umblerUsuarios.filter(u => u.ativo !== false);
+  const filtros = [
+    { key:'todos',    label:'Todos',          n: ativos.length },
+    { key:'semerp',   label:'Sem vínculo ERP',n: ativos.filter(u => u.id_colaborador_erp == null).length },
+    { key:'inativo',  label:'Inativos',       n: _umblerUsuarios.filter(u => u.ativo === false).length },
+    { key:'novo',     label:'Não vinculados', n: _umblerUsrNaoVinc.length },
+  ];
+  box.innerHTML = filtros.map(f => {
+    const on = _umblerUsrFiltro === f.key;
+    return `<button onclick="setFiltroUsuario('${f.key}')" style="height:32px;padding:0 12px;border-radius:8px;font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;border:1px solid ${on?'var(--blue)':'var(--border)'};background:${on?'var(--blue)':'var(--surface2)'};color:${on?'#fff':'var(--muted)'}">${f.label}${f.n?` (${f.n})`:''}</button>`;
+  }).join('');
+}
+
+function setFiltroUsuario(k) { _umblerUsrFiltro = k; renderFiltrosUsuarios(); renderUsuariosUmbler(); }
+
+function _optsErp(sel) {
+  const opts = ['<option value="">— vincular pessoa do ERP —</option>'];
+  for (const p of (_erpPessoas || [])) {
+    const s = String(p.id_colaborador_erp) === String(sel) ? ' selected' : '';
+    const cargo = p.cargo ? ` · ${p.cargo}` : '';
+    opts.push(`<option value="${p.id_colaborador_erp}"${s}>${(p.nome||'').replace(/</g,'&lt;')}${cargo}</option>`);
+  }
+  return opts.join('');
+}
+function _optsSeg(sel) {
+  return UMBLER_SEGMENTOS.map(s => `<option value="${s}"${s===sel?' selected':''}>${s}</option>`).join('');
+}
+
+function renderUsuariosUmbler() {
+  const lista = document.getElementById('umbler-usuarios-lista');
+
+  // fonte de linhas conforme filtro
+  let rows;
+  if (_umblerUsrFiltro === 'novo') {
+    rows = _umblerUsrNaoVinc.map(u => ({
+      id_membro_umbler: u.id_membro_umbler, nome:'', id_colaborador_erp:null,
+      segmento: (u.segmentos_vistos && u.segmentos_vistos[0]) || 'pendente',
+      ativo:true, mensagens:u.mensagens, ultimo_em:u.ultimo_em, novo:true,
+    }));
+  } else {
+    let d = _umblerUsuarios;
+    if (_umblerUsrFiltro === 'inativo')      d = d.filter(u => u.ativo === false);
+    else if (_umblerUsrFiltro === 'semerp')  d = d.filter(u => u.ativo !== false && u.id_colaborador_erp == null);
+    else                                     d = d.filter(u => u.ativo !== false);
+    rows = d.map(u => ({ ...u, novo:false }));
+  }
+
+  if (!rows.length) {
+    const msg = _umblerUsrFiltro === 'novo'
+      ? 'Nenhum atendente respondeu nos últimos 60 dias fora do cadastro. 👍'
+      : 'Nenhum usuário aqui.';
+    lista.innerHTML = `<div style="padding:16px 0;font-size:13px;color:var(--muted)">${msg}</div>`;
+    return;
+  }
+
+  lista.innerHTML = rows.map(u => {
+    const id = u.id_membro_umbler;
+    const inativo = u.ativo === false;
+    const cor = UMBLER_SEG_COR[u.segmento] || '#9AA5B8';
+    const vol = `${(u.mensagens||0).toLocaleString('pt-BR')} msg${u.ultimo_em?' · último '+_fmtHrAtras(u.ultimo_em):''}`;
+    const semErp = u.id_colaborador_erp == null;
+    const btnAtivo = u.novo ? '' : (inativo
+      ? `<button onclick="setUsuarioAtivo('${id}',true)" style="height:36px;padding:0 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--blue);font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer">↩ Restaurar</button>`
+      : `<button onclick="setUsuarioAtivo('${id}',false)" title="Tirar do cadastro ativo" style="height:36px;padding:0 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer">✕ Remover</button>`);
+    return `<div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-top:1px solid var(--border);flex-wrap:wrap;${inativo?'opacity:.6':''}">
+      <span style="width:8px;height:8px;border-radius:50%;background:${cor};flex-shrink:0" title="${u.segmento||''}"></span>
+      <div style="flex:1;min-width:150px">
+        <input id="usr-nome-${id}" value="${(u.nome||'').replace(/"/g,'&quot;')}" placeholder="nome do atendente" style="width:100%;height:34px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:var(--input-bg);font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;color:var(--text)">
+        <div style="font-size:10px;color:var(--muted);margin-top:3px">${vol}${semErp?' · <span style=\"color:#E07B00;font-weight:700\">sem ERP</span>':''} · <span style="opacity:.6">${id}</span></div>
+      </div>
+      <select id="usr-erp-${id}" style="height:36px;max-width:190px;padding:0 8px;border:1px solid var(--border);border-radius:8px;background:var(--input-bg);font-size:12px;font-family:'DM Sans',sans-serif;color:var(--text);cursor:pointer">${_optsErp(u.id_colaborador_erp)}</select>
+      <select id="usr-seg-${id}" style="height:36px;padding:0 8px;border:1px solid var(--border);border-radius:8px;background:var(--input-bg);font-size:12px;font-family:'DM Sans',sans-serif;color:var(--text);cursor:pointer">${_optsSeg(u.segmento)}</select>
+      <button onclick="salvarUsuarioUmbler('${id}',${u.novo})" style="height:36px;padding:0 14px;background:linear-gradient(135deg,var(--blue),#0284C7);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">${u.novo?'+ Cadastrar':'Salvar'}</button>
+      ${btnAtivo}
+    </div>`;
+  }).join('');
+}
+
+async function salvarUsuarioUmbler(idMembro, novo) {
+  const nome = (document.getElementById('usr-nome-'+idMembro)?.value || '').trim();
+  const erpVal = document.getElementById('usr-erp-'+idMembro)?.value || '';
+  const seg = document.getElementById('usr-seg-'+idMembro)?.value || null;
+  const btn = document.querySelector(`button[onclick="salvarUsuarioUmbler('${idMembro}',${novo})"]`);
+  if (novo && !nome) { alert('Dê um nome ao atendente antes de cadastrar.'); return; }
+  if (btn) { btn.textContent = '…'; btn.disabled = true; }
+  try {
+    const token = (await sb.auth.getSession()).data.session?.access_token;
+    const meta = sb.auth.getUser ? (await sb.auth.getUser()).data?.user?.user_metadata : null;
+    const resp = await fetch(SUPA_URL + '/rest/v1/rpc/umbler_classificar_usuario', {
+      method: 'POST',
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        p_id_membro: idMembro, p_nome: nome || null,
+        p_id_colaborador_erp: erpVal ? parseInt(erpVal, 10) : null,
+        p_segmento: seg, p_por: meta?.nome || 'hub',
+      }),
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status + ' ' + (await resp.text()).slice(0,120));
+    if (btn) { btn.textContent = '✓'; btn.style.background = '#0F9D6E'; }
+    await carregarUsuariosUmbler();
+    if (novo) setFiltroUsuario('semerp'); // recém-cadastrado aparece na lista principal
+  } catch (e) {
+    if (btn) { btn.textContent = 'Erro'; btn.style.background = 'var(--destructive)'; btn.disabled = false; }
+    console.error('salvarUsuarioUmbler', e);
+    alert('Erro ao salvar usuário: ' + e.message);
+  }
+}
+
+async function setUsuarioAtivo(idMembro, ativo) {
+  try {
+    const token = (await sb.auth.getSession()).data.session?.access_token;
+    const resp = await fetch(SUPA_URL + '/rest/v1/rpc/umbler_set_usuario_ativo', {
+      method: 'POST',
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_id_membro: idMembro, p_ativo: ativo }),
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status + ' ' + (await resp.text()).slice(0,120));
+    await carregarUsuariosUmbler();
+  } catch (e) {
+    console.error('setUsuarioAtivo', e);
+    alert('Erro ao ' + (ativo?'restaurar':'remover') + ' usuário: ' + e.message);
+  }
+}
+window.setUmblerSub = setUmblerSub;
+window.carregarUsuariosUmbler = carregarUsuariosUmbler;
+window.setFiltroUsuario = setFiltroUsuario;
+window.salvarUsuarioUmbler = salvarUsuarioUmbler;
+window.setUsuarioAtivo = setUsuarioAtivo;
 
 async function carregarUsuarios() {
   const lista = document.getElementById('admin-lista');
