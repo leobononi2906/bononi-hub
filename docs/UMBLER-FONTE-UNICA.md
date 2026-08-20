@@ -126,6 +126,23 @@ Nada se perde nesse meio-tempo — tudo está cru em `umbler_eventos` e pode ser
 
 ---
 
+## 6b. Camada de gestão/análise por cima do intake (20/08/2026)
+Além do intake, foi construída a camada de **gestão de usuários** e a **reestruturação
+do backend das mensagens** para análise (base p/ IA ler depois — a IA ainda NÃO roda):
+- **Config de Usuários da Umbler** (subaba 👤 no Hub): de-para `id_membro_umbler → pessoa ERP`
+  (`umbler_usuarios` + RPC `umbler_classificar_usuario`).
+- **Camada canônica `umbler_msg`** (reconstruída de `umbler_eventos.payload`): corrige o
+  **papel** (cliente/atendente/bot/externo, via `Source`) e o **autor real**
+  (`SentByOrganizationMember`) que a `umbler_mensagens`/`direcao` erra. Função
+  `umbler_msg_backfill()`.
+- ⚠️ **Não usar `umbler_mensagens`/`direcao` para análise** — mislabela o bot e confunde
+  autor com dono da conversa. Usar `umbler_msg`.
+
+Detalhes completos, diagnóstico e próximos passos (transcrição de áudio/imagem):
+**`docs/2026-08-20-umbler-usuarios-e-analise-backend.md`**.
+
+---
+
 ## 7. Convenções
 
 - Tabelas genéricas da Umbler: prefixo `umbler_`.
