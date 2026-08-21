@@ -1458,6 +1458,11 @@ function renderUsuarios(data, grupo) {
               style="height:32px;padding:0 14px;background:#EEF4FF;border:1px solid #C7D9F5;border-radius:8px;color:#1A3A8F;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer">
               Editar
             </button>
+            <button onclick='abrirResetSenha(${JSON.stringify(u)})'
+              title="Redefinir senha (quando o usuário esquece)"
+              style="height:32px;padding:0 12px;background:#FFF7E6;border:1px solid #F5D9A8;border-radius:8px;color:#9A6A00;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer">
+              🔑 Senha
+            </button>
             <button onclick='deletarUsuario("${u.id}", "${u.email}")'
               style="height:32px;padding:0 12px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:8px;color:var(--destructive);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer">
               🗑️
@@ -1659,6 +1664,17 @@ async function resetarSenha() {
     erro.style.display = 'block';
   }
 }
+
+// Abre o modal do usuário já com a seção de nova senha expandida (botão 🔑 do card)
+function abrirResetSenha(u) {
+  editarUsuario(u);
+  const wrap = document.getElementById('modal-reset-wrap');
+  const btn  = document.getElementById('modal-btn-toggle-senha');
+  if (wrap) { wrap.style.display = 'flex'; wrap.style.flexDirection = 'column'; }
+  if (btn)  { btn.textContent = '✕ Cancelar'; }
+  setTimeout(() => document.getElementById('modal-nova-senha')?.focus(), 60);
+}
+window.abrirResetSenha = abrirResetSenha;
 
 
 // ── Minha Senha ──
