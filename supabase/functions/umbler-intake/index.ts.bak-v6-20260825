@@ -1,22 +1,14 @@
+// BACKUP da versão v6 (no ar até 25/08/2026) — restaurar re-deployando este conteúdo.
 // umbler-intake — Receptor ÚNICO da Umbler (Aplicação "Geral")
 //
-// v7 (25/08/2026) — HARDENING ANTI-PAUSA.
-// Problema (17/08): o Umbler pausa o webhook quando a resposta demora/falha sob
-// carga. A v6 esperava TODAS as gravações + a chamada da função do setor (a da
-// assistência faz busca de telefone full-scan) ANTES de responder → sob o volume
-// do ecommerce (5k+/dia) ficava lenta e o Umbler pausou por 6 dias.
-// Correção: grava o CRU (umbler_eventos) e responde 200 NA HORA; o resto
-// (conversa, mensagem, roteamento pros setores) roda em SEGUNDO PLANO
-// (EdgeRuntime.waitUntil). "Nada se perde": o cru já está salvo antes da resposta.
-// E o catch responde 200 (ok:false) em vez de 500, pra uma falha pontual nunca
-// mais derrubar o webhook.
-//
-// Fonte única:
-//   - umbler_eventos    : payload cru (dedup por event_id) — ANTES da resposta
-//   - umbler_conversas  : conversa parseada (background)
-//   - umbler_mensagens  : mensagem parseada (background)
-// Roteamento por segmento (background), cada setor com sua lógica intacta:
-//   assistencia → assistencia-umbler-webhook · ecommerce → Ecomm_UMBLER · atacado → UMBLERATC
+// Recebe eventos de TODOS os canais e grava numa fonte única:
+//   - umbler_eventos    : payload cru (nada se perde, dedup por event_id)
+//   - umbler_conversas  : conversa parseada (upsert por id_conversa)
+//   - umbler_mensagens  : mensagem parseada (upsert por event_id)
+// Cada registro é carimbado com `segmento`, resolvido pelo de-para
+// umbler_canal_segmento. Canal novo é auto-cadastrado como 'pendente'
+// (classificação depois pela tela do hub). Depois, roteia por segmento
+// pra função de cada setor (que mantém a lógica própria intacta).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -37,8 +29,6 @@ function extractTags(content: any): string[] {
     .filter(Boolean)
 }
 
-// Resolve o segmento pelo canal. Se o canal ainda não estiver no de-para,
-// cadastra como 'pendente' (sem sobrescrever classificação já feita).
 async function resolveSegmento(idCanal: string, nomeCanal: string): Promise<string> {
   if (!idCanal) return 'pendente'
   const { data } = await supabase
@@ -61,11 +51,13 @@ async function resolveSegmento(idCanal: string, nomeCanal: string): Promise<stri
   return 'pendente'
 }
 
-// Processamento PESADO — roda em background (NÃO segura a resposta ao Umbler).
-async function processarResto(body: any, segmento: string) {
+Deno.serve(async (req) => {
   try {
+    const body = await req.json()
     const content = body?.Payload?.Content
-    if (!content) return
+    if (!content) {
+      return json({ ok: true, skip: 'sem content' })
+    }
 
     const telefone = digits(content?.Contact?.PhoneNumber || '')
     const nomeContato = content?.Contact?.Name || ''
@@ -82,7 +74,23 @@ async function processarResto(body: any, segmento: string) {
     const nomeAtendente =
       content?.LastOrganizationMember?.Name || lastMessage?.SentByOrganizationMember?.Name || null
 
-    // Conversa (upsert por id_conversa)
+    const segmento = await resolveSegmento(idCanal, nomeCanal)
+
+    await supabase.from('umbler_eventos').upsert(
+      {
+        event_id: eventId,
+        tipo: eventType || null,
+        id_conversa: chatId || null,
+        id_contato: contactId || null,
+        telefone: telefone || null,
+        id_canal: idCanal || null,
+        nome_canal: nomeCanal || null,
+        segmento,
+        payload: body,
+      },
+      { onConflict: 'event_id', ignoreDuplicates: true }
+    )
+
     if (chatId) {
       const { error } = await supabase.from('umbler_conversas').upsert(
         {
@@ -106,7 +114,6 @@ async function processarResto(body: any, segmento: string) {
       if (error) console.error('Erro ao salvar conversa:', error)
     }
 
-    // Mensagem (upsert por event_id)
     if (eventType === 'Message' && chatId && lastMessage) {
       const sentByMemberId = lastMessage?.SentByOrganizationMember?.Id || ''
       const direcao = sentByMemberId ? 'empresa' : 'cliente'
@@ -144,7 +151,6 @@ async function processarResto(body: any, segmento: string) {
       if (error) console.error('Erro ao salvar mensagem:', error)
     }
 
-    // Roteamento por segmento (mantém a lógica de cada setor intacta). 'pendente' não roteia.
     const ROTAS: Record<string, string> = {
       assistencia: 'assistencia-umbler-webhook',
       ecommerce: 'Ecomm_UMBLER',
@@ -167,63 +173,11 @@ async function processarResto(body: any, segmento: string) {
         console.error(`Erro ao rotear p/ ${rota}:`, e)
       }
     }
-  } catch (e) {
-    console.error('umbler-intake background erro:', e)
-  }
-}
 
-Deno.serve(async (req) => {
-  try {
-    const body = await req.json()
-    const content = body?.Payload?.Content
-    if (!content) {
-      return json({ ok: true, skip: 'sem content' })
-    }
-
-    const nomeCanal = content?.Channel?.Name || ''
-    const idCanal = content?.Channel?.Id || ''
-    const contactId = content?.Contact?.Id || ''
-    const chatId = content?.Id || content?.LastMessage?.Chat?.Id || ''
-    const telefone = digits(content?.Contact?.PhoneNumber || '')
-    const lastMessage = content?.LastMessage || content?.Message || null
-    const eventType = body?.Type || ''
-    const eventId = body?.EventId || `${chatId}:${lastMessage?.Id || crypto.randomUUID()}`
-
-    const segmento = await resolveSegmento(idCanal, nomeCanal)
-
-    // 1) CRU — grava ANTES de responder (rápido: 1 upsert). Garante "nada se perde".
-    await supabase.from('umbler_eventos').upsert(
-      {
-        event_id: eventId,
-        tipo: eventType || null,
-        id_conversa: chatId || null,
-        id_contato: contactId || null,
-        telefone: telefone || null,
-        id_canal: idCanal || null,
-        nome_canal: nomeCanal || null,
-        segmento,
-        payload: body,
-      },
-      { onConflict: 'event_id', ignoreDuplicates: true }
-    )
-
-    // 2) Resto (conversa, mensagem, roteamento) em BACKGROUND — não segura o 200.
-    const tarefa = processarResto(body, segmento)
-    // @ts-ignore EdgeRuntime é global no runtime da Supabase (Deno deploy)
-    if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime?.waitUntil) {
-      // @ts-ignore
-      EdgeRuntime.waitUntil(tarefa)
-    } else {
-      tarefa.catch((e) => console.error('tarefa bg erro:', e))
-    }
-
-    // Responde 200 imediatamente — o Umbler nunca mais vê lentidão/erro.
-    return json({ ok: true, segmento, tipo: eventType, id_conversa: chatId })
+    return json({ ok: true, segmento, roteado: rota || null, tipo: eventType, id_conversa: chatId, mensagem_salva: eventType === 'Message' })
   } catch (err) {
     console.error('umbler-intake erro:', err)
-    // Responder 200 (ok:false) em vez de 500: uma falha pontual não deve
-    // fazer o Umbler pausar o webhook (era a causa do incidente de 17/08).
-    return json({ ok: false, erro: (err as Error).message })
+    return json({ error: (err as Error).message }, 500)
   }
 })
 
