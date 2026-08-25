@@ -468,6 +468,12 @@ body::before {
       <div class="greeting-sub">Selecione um aplicativo para acessar</div>
     </div>
 
+    <!-- Aviso de saúde da Umbler (só admin; aparece só quando o recebimento está parado) -->
+    <div id="umbler-alerta" style="display:none;margin:0 0 22px;padding:14px 18px;border-radius:12px;background:#FEF3C7;border:1px solid #F5D9A8;color:#92400E;font-size:13px;align-items:center;gap:10px">
+      <span style="font-size:18px;flex-shrink:0">⚠️</span>
+      <span id="umbler-alerta-txt" style="line-height:1.45">Recebimento de mensagens da Umbler parado.</span>
+    </div>
+
     <div class="section-label">Seus aplicativos</div>
     <div class="apps-grid" id="apps-grid"></div>
 
@@ -786,7 +792,41 @@ function mostrarPortal(usuario) {
   if (usuario.admin) { document.getElementById('btn-admin').style.display = 'block'; document.getElementById('btn-func').style.display = 'block'; document.getElementById('btn-config').style.display = 'block'; }
   verificarSync();
   setInterval(verificarSync, 5 * 60 * 1000); // re-verifica a cada 5 min
+  if (usuario.admin) { checarSaudeUmbler(); setInterval(checarSaudeUmbler, 5 * 60 * 1000); }
   document.getElementById('portal').classList.add('show');
+}
+
+// Aviso simples na tela inicial: alerta o admin se o intake da Umbler estiver
+// parado (webhook pausado). Consulta o "termômetro" umbler_intake_saude (RPC leve).
+async function checarSaudeUmbler() {
+  const box = document.getElementById('umbler-alerta');
+  const txt = document.getElementById('umbler-alerta-txt');
+  if (!box) return;
+  try {
+    const sess = (await sb.auth.getSession()).data.session;
+    const resp = await fetch(SUPA_URL + '/rest/v1/rpc/umbler_intake_saude', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + (sess?.access_token || SUPA_KEY),
+      },
+      body: '{}',
+    });
+    if (!resp.ok) return;
+    const s = await resp.json();
+    if (s && s.alerta) {
+      const m = s.minutos;
+      const quanto = (m == null) ? 'há bastante tempo'
+        : (m >= 120) ? `há ${Math.floor(m / 60)}h`
+        : `há ${m} min`;
+      txt.textContent = `Atenção: o recebimento de mensagens da Umbler está parado ${quanto}. `
+        + `O webhook pode ter pausado — conferir no painel da Umbler (Aplicação "Geral").`;
+      box.style.display = 'flex';
+    } else {
+      box.style.display = 'none';
+    }
+  } catch (_e) { /* silencioso — nunca atrapalha o portal */ }
 }
 
 async function fazerLogin() {
