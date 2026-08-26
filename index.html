@@ -469,7 +469,7 @@ body::before {
     </div>
 
     <!-- Aviso de saúde da Umbler (só admin; aparece só quando o recebimento está parado) -->
-    <div id="umbler-alerta" style="display:none;margin:0 0 22px;padding:14px 18px;border-radius:12px;background:#FEF3C7;border:1px solid #F5D9A8;color:#92400E;font-size:13px;align-items:center;gap:10px">
+    <div id="umbler-alerta" style="display:none;margin:0 0 22px;padding:14px 18px;border-radius:12px;background:#FEF3C7;border:1px solid #F5D9A8;color:#92400E;font-size:13px;align-items:flex-start;gap:10px">
       <span style="font-size:18px;flex-shrink:0">⚠️</span>
       <span id="umbler-alerta-txt" style="line-height:1.45">Recebimento de mensagens da Umbler parado.</span>
     </div>
@@ -802,6 +802,9 @@ async function checarSaudeUmbler() {
   const box = document.getElementById('umbler-alerta');
   const txt = document.getElementById('umbler-alerta-txt');
   if (!box) return;
+  const avisos = [];
+
+  // 1) Recebimento (webhook/intake) da Umbler parado
   try {
     const sess = (await sb.auth.getSession()).data.session;
     const resp = await fetch(SUPA_URL + '/rest/v1/rpc/umbler_intake_saude', {
@@ -813,20 +816,38 @@ async function checarSaudeUmbler() {
       },
       body: '{}',
     });
-    if (!resp.ok) return;
-    const s = await resp.json();
-    if (s && s.alerta) {
-      const m = s.minutos;
-      const quanto = (m == null) ? 'há bastante tempo'
-        : (m >= 120) ? `há ${Math.floor(m / 60)}h`
-        : `há ${m} min`;
-      txt.textContent = `Atenção: o recebimento de mensagens da Umbler está parado ${quanto}. `
-        + `O webhook pode ter pausado — conferir no painel da Umbler (Aplicação "Geral").`;
-      box.style.display = 'flex';
-    } else {
-      box.style.display = 'none';
+    if (resp.ok) {
+      const s = await resp.json();
+      if (s && s.alerta) {
+        const m = s.minutos;
+        const quanto = (m == null) ? 'há bastante tempo'
+          : (m >= 120) ? `há ${Math.floor(m / 60)}h`
+          : `há ${m} min`;
+        avisos.push(`O recebimento de mensagens da Umbler está parado ${quanto}. `
+          + `O webhook pode ter pausado — conferir no painel da Umbler (Aplicação "Geral").`);
+      }
     }
-  } catch (_e) { /* silencioso — nunca atrapalha o portal */ }
+  } catch (_e) { /* silencioso */ }
+
+  // 2) Canais/números vigiados sem atividade (ex.: número do tacógrafo, atacado)
+  try {
+    const canais = await _sbGet('vw_umbler_canal_alerta?select=nome_canal,horas_inativo,limite_horas&em_alerta=is.true&order=horas_inativo.desc');
+    (canais || []).forEach(c => {
+      const h = Number(c.horas_inativo);
+      const quanto = isNaN(h) ? 'há bastante tempo'
+        : (h < 1) ? `há ${Math.round(h * 60)} min`
+        : `há ${h.toFixed(1)}h`;
+      avisos.push(`Canal <b>${c.nome_canal}</b> sem atividade ${quanto} (limite ${c.limite_horas}h) — o número pode ter caído/desconectado.`);
+    });
+  } catch (_e) { /* silencioso */ }
+
+  // Render (mostra o box se houver qualquer aviso; lista todos)
+  if (avisos.length) {
+    txt.innerHTML = avisos.map(a => '• ' + a).join('<br>');
+    box.style.display = 'flex';
+  } else {
+    box.style.display = 'none';
+  }
 }
 
 async function fazerLogin() {
