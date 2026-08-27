@@ -1114,7 +1114,7 @@ async function carregarIntegrador() {
   lista.innerHTML = 'Carregando…';
   try {
     const [cfg, centros, vend] = await Promise.all([
-      _sbGet('integ_config_canal?select=*&order=canal.asc'),
+      _sbGet('integ_config_canal?select=*&order=qtd_amostra.desc.nullslast,canal.asc'),
       _sbGet('vw_fb_estoque_centro?select=id_empresa,empresa,id_centro_estoque,centro_estoque,centro_padrao'),
       _sbGet('vw_dim_vendedor?select=id_vendedor,nome_vendedor,id_empresa&order=nome_vendedor.asc'),
     ]);
@@ -1164,9 +1164,12 @@ function renderIntegCanais() {
   const inp = 'height:38px;padding:0 8px;border:1px solid var(--border);border-radius:8px;background:var(--input-bg);font-size:12px;font-family:\'DM Sans\',sans-serif;color:var(--text)';
   const rows = _integ.cfg.map((c, i) => {
     const emp = c.id_empresa || '';
+    const ident = `${c.conta?`<b>${c.conta}</b> · `:''}loja ${c.loja_id||'—'}${c.qtd_amostra?` · ${c.qtd_amostra} ped`:''}${c.dica_numeroloja?`<br><span style="opacity:.8">${c.dica_numeroloja}</span>`:''}`;
     return `<tr id="integ-row-${i}" style="border-top:1px solid var(--border)">
-      <td style="${td}"><input value="${c.canal||''}" ${c._novo?'':'readonly'} oninput="_integCampo(${i},'canal',this.value)" style="${inp};width:120px;${c._novo?'':'opacity:.75'}" /></td>
-      <td style="${td}"><input value="${c.descricao||''}" oninput="_integCampo(${i},'descricao',this.value)" placeholder="descrição" style="${inp};width:150px" /></td>
+      <td style="${td}">
+        <input value="${c.nome||c.canal||''}" oninput="_integCampo(${i},'nome',this.value)" placeholder="nome do canal" style="${inp};width:190px" />
+        <div style="font-size:10px;color:var(--muted);margin-top:3px;line-height:1.4">${ident}</div>
+      </td>
       <td style="${td}"><select onchange="_integCampo(${i},'id_empresa',this.value); _integRecarregaDeps(${i})" style="${inp};cursor:pointer;width:160px">${_optsEmpresa(emp)}</select></td>
       <td style="${td}"><input type="number" value="${c.id_tipo_saida??''}" oninput="_integCampo(${i},'id_tipo_saida',this.value)" placeholder="cód" title="Código da operação/tipo de saída no ERP" style="${inp};width:70px" /></td>
       <td style="${td}"><select id="integ-vend-${i}" onchange="_integCampo(${i},'id_vendedor',this.value)" style="${inp};cursor:pointer;width:200px">${_optsVend(emp, c.id_vendedor)}</select></td>
@@ -1178,11 +1181,11 @@ function renderIntegCanais() {
   }).join('');
   box.innerHTML = `<table style="width:100%;border-collapse:collapse;min-width:900px">
     <thead><tr>
-      <th style="${th}">Canal</th><th style="${th}">Descrição</th><th style="${th}">Empresa</th>
+      <th style="${th}">Canal (loja Bling)</th><th style="${th}">Empresa</th>
       <th style="${th}">Operação</th><th style="${th}">Vendedor</th><th style="${th}">Cond. Pagto</th>
       <th style="${th}">Centro estoque</th><th style="${th};text-align:center">Ativo</th><th style="${th}"></th>
     </tr></thead><tbody>${rows}</tbody></table>
-    <div style="margin-top:10px;font-size:11px;color:var(--muted)">💡 <b>Operação</b> e <b>Cond. Pagto</b> ainda não vêm replicadas do Firebird — informe o código do ERP. Vendedor ML Bononi = <b>79830</b> (normal) / <b>79831</b> (Full).</div>`;
+    <div style="margin-top:10px;font-size:11px;color:var(--muted)">💡 Cada <b>loja</b> do Bling é um canal (ML normal, ML Full, Shopee, site…). <b>Operação</b> e <b>Cond. Pagto</b> ainda não vêm do Firebird — informe o código do ERP. Vendedor ML Bononi = <b>79830</b> (normal) / <b>79831</b> (Full).</div>`;
 }
 
 function _integCampo(i, campo, val) {
@@ -1190,7 +1193,7 @@ function _integCampo(i, campo, val) {
   if (campo === 'ativo') c.ativo = val;
   else if (['id_empresa','id_tipo_saida','id_vendedor','id_condpag','id_centro_estoque'].includes(campo))
     c[campo] = val === '' ? null : Number(val);
-  else c[campo] = val;
+  else c[campo] = val;   // nome, canal, conta (texto)
 }
 function _integRecarregaDeps(i) {
   const c = _integ.cfg[i]; if (!c) return;
@@ -1200,14 +1203,18 @@ function _integRecarregaDeps(i) {
   if (cs) cs.innerHTML = _optsCentro(c.id_empresa, c.id_centro_estoque);
 }
 function integNovoCanal() {
-  _integ.cfg.push({ canal:'', descricao:'', id_empresa:null, id_tipo_saida:null, id_vendedor:null, id_condpag:null, id_centro_estoque:null, ativo:true, _novo:true });
+  _integ.cfg.unshift({ canal:'', nome:'', conta:null, loja_id:null, id_empresa:null, id_tipo_saida:null, id_vendedor:null, id_condpag:null, id_centro_estoque:null, ativo:true, _novo:true });
   renderIntegCanais();
 }
 async function integSalvarCanal(i) {
   const c = _integ.cfg[i]; if (!c) return;
-  if (!c.canal || !c.canal.trim()) { alert('Informe o nome do canal.'); return; }
+  // chave do canal: usa a existente; senão deriva de conta:loja; senão do nome
+  const chave = (c.canal && c.canal.trim())
+    || (c.loja_id ? `${c.conta||'canal'}:${c.loja_id}` : (c.nome||'').trim().toLowerCase().replace(/\s+/g,'-'));
+  if (!chave) { alert('Informe um nome pro canal.'); return; }
+  c.canal = chave;
   const payload = {
-    canal: c.canal.trim(), descricao: c.descricao || null,
+    canal: chave, nome: c.nome || null, conta: c.conta || null, loja_id: c.loja_id ?? null,
     id_empresa: c.id_empresa, id_tipo_saida: c.id_tipo_saida, id_vendedor: c.id_vendedor,
     id_condpag: c.id_condpag, id_centro_estoque: c.id_centro_estoque, ativo: c.ativo !== false,
   };
