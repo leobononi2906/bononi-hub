@@ -373,6 +373,20 @@ body::before {
 @media (max-width: 400px) {
   .apps-grid { grid-template-columns: 1fr; }
 }
+/* Modais no celular: rolam dentro do overlay e ocupam a largura toda,
+   pra o botão de ação (ex. Salvar) nunca ficar fora da tela. */
+@media (max-width: 640px) {
+  #sync-modal, #integ-vinc-overlay, #modal-overlay, #modal-minha-senha, #overlay-func, #confirm-overlay {
+    align-items: flex-start !important; overflow-y: auto !important; padding: 12px !important;
+  }
+  #sync-modal > div, #integ-vinc-overlay > div, #modal-overlay > div,
+  #modal-minha-senha > div, #overlay-func > div, #confirm-overlay > div {
+    max-width: 100% !important; margin: auto !important;
+  }
+  #sync-modal > div, #modal-overlay > div, #modal-minha-senha > div, #confirm-overlay > div {
+    max-height: none !important; padding: 20px !important;
+  }
+}
 </style>
 </head>
 <body>
@@ -479,7 +493,7 @@ body::before {
 
     <!-- PAINEL ADMIN -->
     <div id="admin-panel" style="display:none;margin-top:40px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
         <div>
           <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--blue);margin-bottom:4px">Administração</div>
           <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800">Gerenciar Usuários</div>
@@ -700,8 +714,8 @@ body::before {
 </div>
 
 <!-- MODAL EDITAR/CRIAR USUÁRIO -->
-<div id="modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:500;align-items:center;justify-content:center;padding:20px">
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:32px;width:100%;max-width:480px;box-shadow:0 24px 60px rgba(15,29,53,0.18)">
+<div id="modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:500;align-items:center;justify-content:center;padding:16px;overflow-y:auto">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:clamp(18px,5vw,32px);width:100%;max-width:480px;max-height:92vh;overflow-y:auto;box-shadow:0 24px 60px rgba(15,29,53,0.18)">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
       <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800" id="modal-titulo">Editar Usuário</div>
       <button onclick="fecharModal()" style="background:var(--surface2);border:none;border-radius:8px;width:32px;height:32px;cursor:pointer;color:var(--muted);font-size:16px">✕</button>
