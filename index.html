@@ -572,6 +572,110 @@ body::before {
         </div>
         <div id="umbler-usuarios-lista" style="padding:12px 18px 16px">Carregando usuários…</div>
       </div>
+
+      <!-- ══════════════ SEÇÃO 3: INTEGRADOR (receber dados + frete) ══════════════ -->
+      <div style="display:flex;align-items:center;gap:10px;margin:28px 0 10px">
+        <span style="font-size:16px">🔌</span>
+        <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--text)">Integrador</div>
+        <span style="font-size:11px;color:var(--muted)">recebimento de pedidos (Bling→ERP) e lançamento de frete no contas a pagar</span>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:12px">
+        <button id="integ-sub-btn-canais" onclick="setIntegSub('canais')" style="height:34px;padding:0 14px;border-radius:8px;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">🧭 Canais &amp; de-para</button>
+        <button id="integ-sub-btn-faturas" onclick="setIntegSub('faturas')" style="height:34px;padding:0 14px;border-radius:8px;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">💸 Faturas de frete</button>
+      </div>
+
+      <!-- Subaba CANAIS & DE-PARA -->
+      <div id="integ-sub-canais" style="border:1px solid var(--border);border-radius:14px;background:var(--surface);overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:10px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:16px">🧭</span>
+            <div>
+              <div style="font-size:14px;font-weight:700;color:var(--text)">De-para por canal</div>
+              <div style="font-size:11px;color:var(--muted)">Cada canal do Bling entra no ERP com uma <b>empresa</b>, <b>operação</b>, <b>vendedor</b>, <b>cond. pagto</b> e <b>centro de estoque</b> padrão. É isso que o integrador usa ao gravar a venda.</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button onclick="integNovoCanal()" style="height:32px;padding:0 12px;background:linear-gradient(135deg,var(--blue),#0284C7);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">+ Canal</button>
+            <button onclick="carregarIntegrador()" style="height:32px;padding:0 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer">↻ Atualizar</button>
+          </div>
+        </div>
+        <div id="integ-canais-lista" style="padding:12px 18px 16px;overflow-x:auto">Carregando…</div>
+      </div>
+
+      <!-- Subaba FATURAS DE FRETE -->
+      <div id="integ-sub-faturas" style="display:none">
+        <!-- lançar fatura -->
+        <div style="border:1px solid var(--border);border-radius:14px;background:var(--surface);overflow:hidden;margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--border)">
+            <span style="font-size:16px">🧾</span>
+            <div>
+              <div style="font-size:14px;font-weight:700;color:var(--text)">Lançar fatura da transportadora</div>
+              <div style="font-size:11px;color:var(--muted)">Cadastre a fatura (empresa, nº, valor, vencimento). Depois escolha <b>em quais NFs/CTes</b> o frete será rateado — vira 1 conta a pagar no ERP.</div>
+            </div>
+          </div>
+          <div style="padding:16px 18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;align-items:end">
+            <div>
+              <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">Empresa (pagador)</label>
+              <select id="fat-empresa" style="width:100%;height:40px;padding:0 10px;border:1px solid var(--border);border-radius:10px;background:var(--input-bg);font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text);cursor:pointer"></select>
+            </div>
+            <div>
+              <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">Transportadora</label>
+              <input id="fat-transp" type="text" placeholder="AGEX, Braspress…" style="width:100%;height:40px;padding:0 12px;border:1px solid var(--border);border-radius:10px;background:var(--input-bg);font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text)" />
+            </div>
+            <div>
+              <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">Nº da fatura</label>
+              <input id="fat-num" type="text" placeholder="0248444-7" style="width:100%;height:40px;padding:0 12px;border:1px solid var(--border);border-radius:10px;background:var(--input-bg);font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text)" />
+            </div>
+            <div>
+              <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">Valor total (R$)</label>
+              <input id="fat-valor" type="number" step="0.01" placeholder="2123.43" style="width:100%;height:40px;padding:0 12px;border:1px solid var(--border);border-radius:10px;background:var(--input-bg);font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text)" />
+            </div>
+            <div>
+              <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">Vencimento</label>
+              <input id="fat-venc" type="date" style="width:100%;height:40px;padding:0 12px;border:1px solid var(--border);border-radius:10px;background:var(--input-bg);font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text)" />
+            </div>
+            <div>
+              <button onclick="integSalvarFatura()" style="width:100%;height:40px;padding:0 14px;background:linear-gradient(135deg,var(--blue),#0284C7);border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">Salvar fatura</button>
+            </div>
+          </div>
+          <div id="fat-form-msg" style="padding:0 18px 14px;font-size:12px;color:var(--muted)"></div>
+        </div>
+        <!-- faturas lançadas -->
+        <div style="border:1px solid var(--border);border-radius:14px;background:var(--surface);overflow:hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--border)">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-size:16px">📋</span>
+              <div>
+                <div style="font-size:14px;font-weight:700;color:var(--text)">Faturas &amp; vínculo de NFs</div>
+                <div style="font-size:11px;color:var(--muted)">Clique em <b>Vincular NFs</b> para marcar os CTes/notas que compõem cada fatura.</div>
+              </div>
+            </div>
+            <button onclick="carregarFaturas()" style="height:32px;padding:0 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer">↻ Atualizar</button>
+          </div>
+          <div id="integ-faturas-lista" style="padding:12px 18px 16px;overflow-x:auto">Carregando…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL VINCULAR NFs À FATURA -->
+<div id="integ-vinc-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:600;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:0;width:100%;max-width:820px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(15,29,53,0.28)">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800" id="integ-vinc-titulo">Vincular NFs</div>
+        <div id="integ-vinc-sub" style="font-size:12px;color:var(--muted);margin-top:2px"></div>
+      </div>
+      <button onclick="fecharVincFat()" style="background:var(--surface2);border:none;border-radius:8px;width:32px;height:32px;cursor:pointer;color:var(--muted);font-size:16px">✕</button>
+    </div>
+    <div id="integ-vinc-body" style="padding:12px 24px;overflow-y:auto;flex:1">Carregando CTes…</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 24px;border-top:1px solid var(--border)">
+      <div id="integ-vinc-resumo" style="font-size:13px;color:var(--muted)"></div>
+      <div style="display:flex;gap:8px">
+        <button onclick="fecharVincFat()" style="height:40px;padding:0 16px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer">Fechar</button>
+        <button onclick="salvarVincFat()" style="height:40px;padding:0 18px;background:linear-gradient(135deg,var(--blue),#0284C7);border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">Salvar vínculo</button>
+      </div>
     </div>
   </div>
 </div>
@@ -946,6 +1050,8 @@ function toggleConfig() {
     carregarSaudeSync();
     setUmblerSub('canais');   // inicializa a subnav Umbler (Canais ativo)
     carregarCanaisUmbler();
+    setIntegSub('canais');    // subnav do Integrador
+    carregarIntegrador();
   } else {
     panel.style.display = 'none';
     appsSection.style.display = '';
@@ -963,6 +1069,331 @@ async function _sbGet(path) {
   if (!resp.ok) throw new Error('HTTP ' + resp.status);
   return resp.json();
 }
+
+// Helper: escrita REST (POST/PATCH) autenticada no Supabase (PostgREST)
+async function _sbWrite(path, method, body, prefer) {
+  const token = (await sb.auth.getSession()).data.session?.access_token;
+  const headers = {
+    'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY),
+    'Content-Type': 'application/json',
+    'Prefer': prefer || 'return=representation',
+  };
+  const resp = await fetch(SUPA_URL + '/rest/v1/' + path, { method, headers, body: JSON.stringify(body) });
+  if (!resp.ok) throw new Error('HTTP ' + resp.status + ' ' + (await resp.text()).slice(0, 160));
+  const txt = await resp.text();
+  return txt ? JSON.parse(txt) : null;
+}
+
+// ══════════════════════════ INTEGRADOR ══════════════════════════
+// Mapa CNPJ (emitente da NF) → id_empresa. Usado pra achar de qual empresa
+// é o CTe (a chave da NF traz o CNPJ do emitente nas posições 6..20).
+const INTEG_EMP_CNPJ = {
+  '57129987000166':1,'05864790000177':2,'05864790000258':3,'05864790000339':4,
+  '73403826000175':5,'51054503000180':6,'15090647000200':8,'15090647000119':7,'15090647000129':7,
+};
+let _integ = { cfg: [], empresas: [], centrosPorEmp: {}, vend: [], faturas: [] };
+let _integSub = 'canais';
+let _fatVincAtual = null;   // fatura sendo vinculada
+let _fatVincCtes = [];      // CTes candidatos no modal
+
+function setIntegSub(sub) {
+  _integSub = sub;
+  const ehFat = sub === 'faturas';
+  document.getElementById('integ-sub-canais').style.display  = ehFat ? 'none' : '';
+  document.getElementById('integ-sub-faturas').style.display = ehFat ? '' : 'none';
+  const on = { bg:'var(--blue)', fg:'#fff', bd:'var(--blue)' };
+  const off = { bg:'var(--surface2)', fg:'var(--muted)', bd:'var(--border)' };
+  const est = (b, s) => { b.style.background=s.bg; b.style.color=s.fg; b.style.border='1px solid '+s.bd; };
+  est(document.getElementById('integ-sub-btn-canais'),  ehFat?off:on);
+  est(document.getElementById('integ-sub-btn-faturas'), ehFat?on:off);
+  if (ehFat && !_integ.faturas.length) carregarFaturas();
+}
+
+async function carregarIntegrador() {
+  const lista = document.getElementById('integ-canais-lista');
+  lista.innerHTML = 'Carregando…';
+  try {
+    const [cfg, centros, vend] = await Promise.all([
+      _sbGet('integ_config_canal?select=*&order=canal.asc'),
+      _sbGet('vw_fb_estoque_centro?select=id_empresa,empresa,id_centro_estoque,centro_estoque,centro_padrao'),
+      _sbGet('vw_dim_vendedor?select=id_vendedor,nome_vendedor,id_empresa&order=nome_vendedor.asc'),
+    ]);
+    _integ.cfg = Array.isArray(cfg) ? cfg : [];
+    _integ.vend = Array.isArray(vend) ? vend : [];
+    // empresas distintas + centros agrupados por empresa
+    const emp = {}; const cpe = {};
+    (Array.isArray(centros) ? centros : []).forEach(c => {
+      if (!emp[c.id_empresa]) emp[c.id_empresa] = { id: c.id_empresa, nome: c.empresa };
+      (cpe[c.id_empresa] = cpe[c.id_empresa] || []).push(c);
+    });
+    _integ.empresas = Object.values(emp).sort((a,b) => a.id - b.id);
+    Object.values(cpe).forEach(arr => arr.sort((a,b) => (b.centro_padrao==='S'?1:0)-(a.centro_padrao==='S'?1:0)));
+    _integ.centrosPorEmp = cpe;
+    renderIntegCanais();
+    preencherEmpresasFatura();
+  } catch (e) {
+    lista.innerHTML = `<div style="color:var(--destructive);font-size:13px">Erro ao carregar integrador: ${e.message}</div>`;
+  }
+}
+
+function _optsEmpresa(sel) {
+  return '<option value="">—</option>' + _integ.empresas.map(e =>
+    `<option value="${e.id}"${Number(sel)===e.id?' selected':''}>${e.id} · ${e.nome}</option>`).join('');
+}
+function _optsCentro(idEmp, sel) {
+  const arr = _integ.centrosPorEmp[idEmp] || [];
+  return '<option value="">—</option>' + arr.map(c =>
+    `<option value="${c.id_centro_estoque}"${Number(sel)===c.id_centro_estoque?' selected':''}>${c.centro_estoque}</option>`).join('');
+}
+function _optsVend(idEmp, sel) {
+  // vendedores da empresa primeiro; se nada casar, mostra todos
+  let arr = _integ.vend.filter(v => !idEmp || Number(v.id_empresa)===Number(idEmp));
+  if (!arr.length) arr = _integ.vend;
+  return '<option value="">—</option>' + arr.map(v =>
+    `<option value="${v.id_vendedor}"${Number(sel)===v.id_vendedor?' selected':''}>${v.id_vendedor} · ${v.nome_vendedor}</option>`).join('');
+}
+
+function renderIntegCanais() {
+  const box = document.getElementById('integ-canais-lista');
+  if (!_integ.cfg.length) {
+    box.innerHTML = `<div style="padding:12px 0;font-size:13px;color:var(--muted)">Nenhum canal configurado. Clique <b>+ Canal</b> pra começar.</div>`;
+    return;
+  }
+  const th = 'text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:8px 8px;white-space:nowrap';
+  const td = 'padding:8px 8px;vertical-align:middle';
+  const inp = 'height:38px;padding:0 8px;border:1px solid var(--border);border-radius:8px;background:var(--input-bg);font-size:12px;font-family:\'DM Sans\',sans-serif;color:var(--text)';
+  const rows = _integ.cfg.map((c, i) => {
+    const emp = c.id_empresa || '';
+    return `<tr id="integ-row-${i}" style="border-top:1px solid var(--border)">
+      <td style="${td}"><input value="${c.canal||''}" ${c._novo?'':'readonly'} oninput="_integCampo(${i},'canal',this.value)" style="${inp};width:120px;${c._novo?'':'opacity:.75'}" /></td>
+      <td style="${td}"><input value="${c.descricao||''}" oninput="_integCampo(${i},'descricao',this.value)" placeholder="descrição" style="${inp};width:150px" /></td>
+      <td style="${td}"><select onchange="_integCampo(${i},'id_empresa',this.value); _integRecarregaDeps(${i})" style="${inp};cursor:pointer;width:160px">${_optsEmpresa(emp)}</select></td>
+      <td style="${td}"><input type="number" value="${c.id_tipo_saida??''}" oninput="_integCampo(${i},'id_tipo_saida',this.value)" placeholder="cód" title="Código da operação/tipo de saída no ERP" style="${inp};width:70px" /></td>
+      <td style="${td}"><select id="integ-vend-${i}" onchange="_integCampo(${i},'id_vendedor',this.value)" style="${inp};cursor:pointer;width:200px">${_optsVend(emp, c.id_vendedor)}</select></td>
+      <td style="${td}"><input type="number" value="${c.id_condpag??''}" oninput="_integCampo(${i},'id_condpag',this.value)" placeholder="cód" title="Código da condição de pagamento no ERP" style="${inp};width:70px" /></td>
+      <td style="${td}"><select id="integ-centro-${i}" onchange="_integCampo(${i},'id_centro_estoque',this.value)" style="${inp};cursor:pointer;width:190px">${_optsCentro(emp, c.id_centro_estoque)}</select></td>
+      <td style="${td};text-align:center"><input type="checkbox" ${c.ativo!==false?'checked':''} onchange="_integCampo(${i},'ativo',this.checked)" style="width:18px;height:18px;cursor:pointer" /></td>
+      <td style="${td}"><button onclick="integSalvarCanal(${i})" style="height:36px;padding:0 12px;background:linear-gradient(135deg,var(--blue),#0284C7);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">Salvar</button></td>
+    </tr>`;
+  }).join('');
+  box.innerHTML = `<table style="width:100%;border-collapse:collapse;min-width:900px">
+    <thead><tr>
+      <th style="${th}">Canal</th><th style="${th}">Descrição</th><th style="${th}">Empresa</th>
+      <th style="${th}">Operação</th><th style="${th}">Vendedor</th><th style="${th}">Cond. Pagto</th>
+      <th style="${th}">Centro estoque</th><th style="${th};text-align:center">Ativo</th><th style="${th}"></th>
+    </tr></thead><tbody>${rows}</tbody></table>
+    <div style="margin-top:10px;font-size:11px;color:var(--muted)">💡 <b>Operação</b> e <b>Cond. Pagto</b> ainda não vêm replicadas do Firebird — informe o código do ERP. Vendedor ML Bononi = <b>79830</b> (normal) / <b>79831</b> (Full).</div>`;
+}
+
+function _integCampo(i, campo, val) {
+  const c = _integ.cfg[i]; if (!c) return;
+  if (campo === 'ativo') c.ativo = val;
+  else if (['id_empresa','id_tipo_saida','id_vendedor','id_condpag','id_centro_estoque'].includes(campo))
+    c[campo] = val === '' ? null : Number(val);
+  else c[campo] = val;
+}
+function _integRecarregaDeps(i) {
+  const c = _integ.cfg[i]; if (!c) return;
+  const vs = document.getElementById('integ-vend-' + i);
+  const cs = document.getElementById('integ-centro-' + i);
+  if (vs) vs.innerHTML = _optsVend(c.id_empresa, c.id_vendedor);
+  if (cs) cs.innerHTML = _optsCentro(c.id_empresa, c.id_centro_estoque);
+}
+function integNovoCanal() {
+  _integ.cfg.push({ canal:'', descricao:'', id_empresa:null, id_tipo_saida:null, id_vendedor:null, id_condpag:null, id_centro_estoque:null, ativo:true, _novo:true });
+  renderIntegCanais();
+}
+async function integSalvarCanal(i) {
+  const c = _integ.cfg[i]; if (!c) return;
+  if (!c.canal || !c.canal.trim()) { alert('Informe o nome do canal.'); return; }
+  const payload = {
+    canal: c.canal.trim(), descricao: c.descricao || null,
+    id_empresa: c.id_empresa, id_tipo_saida: c.id_tipo_saida, id_vendedor: c.id_vendedor,
+    id_condpag: c.id_condpag, id_centro_estoque: c.id_centro_estoque, ativo: c.ativo !== false,
+  };
+  try {
+    await _sbWrite('integ_config_canal?on_conflict=canal', 'POST', payload, 'return=representation,resolution=merge-duplicates');
+    delete c._novo;
+    const btn = document.querySelector(`#integ-row-${i} button`);
+    if (btn) { btn.textContent = '✓ Salvo'; btn.style.background = '#0F9D6E'; setTimeout(() => { btn.textContent = 'Salvar'; btn.style.background = 'linear-gradient(135deg,var(--blue),#0284C7)'; }, 1400); }
+  } catch (e) { alert('Erro ao salvar canal: ' + e.message); }
+}
+
+// ── Faturas de frete ──
+const _R = (v) => (Number(v)||0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+const _fmtD = (d) => { if (!d) return '—'; const [y,m,dd] = String(d).slice(0,10).split('-'); return `${dd}/${m}/${y}`; };
+
+function preencherEmpresasFatura() {
+  const sel = document.getElementById('fat-empresa');
+  if (sel) sel.innerHTML = _optsEmpresa('');
+}
+
+async function carregarFaturas() {
+  const box = document.getElementById('integ-faturas-lista');
+  box.innerHTML = 'Carregando…';
+  try {
+    const fat = await _sbGet('frt_faturas?select=*&order=criado_em.desc&limit=200');
+    _integ.faturas = Array.isArray(fat) ? fat : [];
+    renderFaturas();
+  } catch (e) {
+    box.innerHTML = `<div style="color:var(--destructive);font-size:13px">Erro ao ler faturas: ${e.message}</div>`;
+  }
+}
+
+function renderFaturas() {
+  const box = document.getElementById('integ-faturas-lista');
+  if (!_integ.faturas.length) { box.innerHTML = `<div style="padding:12px 0;font-size:13px;color:var(--muted)">Nenhuma fatura lançada ainda.</div>`; return; }
+  const th = 'text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:8px 10px;white-space:nowrap';
+  const td = 'padding:10px;font-size:13px;color:var(--text);border-top:1px solid var(--border);white-space:nowrap';
+  const rows = _integ.faturas.map(f => {
+    const st = f.status === 'lancada' ? '<span style="background:rgba(15,157,110,.14);color:#0F9D6E;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700">lançada</span>'
+      : '<span style="background:var(--surface2);color:var(--muted);padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700">aberta</span>';
+    return `<tr>
+      <td style="${td}">${f.empresa || (f.id_empresa? 'Emp '+f.id_empresa : '—')}</td>
+      <td style="${td}">${f.transportadora || '—'}</td>
+      <td style="${td};font-weight:700">${f.num_fatura || '—'}</td>
+      <td style="${td};text-align:right;font-variant-numeric:tabular-nums">${_R(f.valor_total)}</td>
+      <td style="${td}">${_fmtD(f.vencimento)}</td>
+      <td style="${td};text-align:center">${f.qtd_ctes || 0}</td>
+      <td style="${td}">${st}</td>
+      <td style="${td}"><button onclick="abrirVincFat('${f.id}')" style="height:34px;padding:0 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--blue);font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">🔗 Vincular NFs</button></td>
+    </tr>`;
+  }).join('');
+  box.innerHTML = `<table style="width:100%;border-collapse:collapse;min-width:820px">
+    <thead><tr><th style="${th}">Empresa</th><th style="${th}">Transportadora</th><th style="${th}">Nº Fatura</th>
+      <th style="${th};text-align:right">Valor</th><th style="${th}">Vencimento</th><th style="${th};text-align:center">CTes</th>
+      <th style="${th}">Status</th><th style="${th}"></th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+async function integSalvarFatura() {
+  const idEmp = document.getElementById('fat-empresa').value;
+  const transp = document.getElementById('fat-transp').value.trim();
+  const num = document.getElementById('fat-num').value.trim();
+  const valor = document.getElementById('fat-valor').value;
+  const venc = document.getElementById('fat-venc').value;
+  const msg = document.getElementById('fat-form-msg');
+  if (!idEmp || !num) { msg.style.color = 'var(--destructive)'; msg.textContent = 'Empresa e nº da fatura são obrigatórios.'; return; }
+  const empNome = (_integ.empresas.find(e => e.id === Number(idEmp)) || {}).nome || null;
+  const payload = {
+    id_empresa: Number(idEmp), empresa: empNome, transportadora: transp || null,
+    num_fatura: num, valor_total: valor ? Number(valor) : null,
+    vencimento: venc || null, origem: 'hub-manual', status: 'aberta',
+  };
+  try {
+    await _sbWrite('frt_faturas?on_conflict=transportadora,num_fatura', 'POST', payload, 'return=representation,resolution=merge-duplicates');
+    msg.style.color = '#0F9D6E'; msg.textContent = '✓ Fatura salva. Agora clique em "Vincular NFs" na lista abaixo.';
+    document.getElementById('fat-num').value = ''; document.getElementById('fat-valor').value = '';
+    await carregarFaturas();
+  } catch (e) { msg.style.color = 'var(--destructive)'; msg.textContent = 'Erro: ' + e.message; }
+}
+
+// empresa emitente de um CTe (via CNPJ na chave da NF)
+function _integEmpresaCte(cte) {
+  const nfs = Array.isArray(cte.notas_fiscais) ? cte.notas_fiscais : [];
+  for (const nf of nfs) {
+    const ch = nf && nf.chave_nfe ? String(nf.chave_nfe) : '';
+    if (ch.length >= 20) { const e = INTEG_EMP_CNPJ[ch.substring(6,20)]; if (e) return e; }
+  }
+  return null;
+}
+function _integNfsTxt(cte) {
+  const nfs = Array.isArray(cte.notas_fiscais) ? cte.notas_fiscais : [];
+  return nfs.map(n => n.num_nf).filter(Boolean).join(', ') || '—';
+}
+
+async function abrirVincFat(idFat) {
+  const f = _integ.faturas.find(x => String(x.id) === String(idFat));
+  if (!f) return;
+  _fatVincAtual = f;
+  document.getElementById('integ-vinc-titulo').textContent = `Vincular NFs — fatura ${f.num_fatura || ''}`;
+  document.getElementById('integ-vinc-sub').textContent =
+    `${f.empresa || 'Emp '+f.id_empresa} · ${f.transportadora || ''} · ${_R(f.valor_total)} · venc ${_fmtD(f.vencimento)}`;
+  document.getElementById('integ-vinc-overlay').style.display = 'flex';
+  document.getElementById('integ-vinc-body').innerHTML = 'Carregando CTes…';
+  document.getElementById('integ-vinc-resumo').textContent = '';
+  try {
+    // CTes candidatos: já vinculados a esta fatura OU ainda não lançados. Traz recentes.
+    const q = `frt_conhecimentos?select=id,num_cte,data_emissao,nome_destinatario,notas_fiscais,valor_frete_cte,valor_frete_nf,nome_transportadora,frete_lancado,id_fatura,num_fatura` +
+      `&or=(id_fatura.eq.${f.id},frete_lancado.eq.false)&order=data_emissao.desc&limit=600`;
+    const ctes = await _sbGet(q);
+    // filtra pela empresa da fatura (emitente da NF)
+    _fatVincCtes = (Array.isArray(ctes) ? ctes : []).filter(c => {
+      if (String(c.id_fatura) === String(f.id)) return true;   // já vinculado, mantém
+      const e = _integEmpresaCte(c);
+      return e == null || e === f.id_empresa;                  // mesma empresa (ou indefinida)
+    });
+    renderVincFat();
+  } catch (e) {
+    document.getElementById('integ-vinc-body').innerHTML = `<div style="color:var(--destructive);font-size:13px">Erro: ${e.message}</div>`;
+  }
+}
+
+function renderVincFat() {
+  const body = document.getElementById('integ-vinc-body');
+  if (!_fatVincCtes.length) { body.innerHTML = `<div style="padding:16px 0;font-size:13px;color:var(--muted)">Nenhum CTe candidato para esta empresa. Confira se os CTes já foram capturados na auditoria de frete.</div>`; return; }
+  const th = 'text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:8px;white-space:nowrap';
+  const td = 'padding:8px;font-size:12px;color:var(--text);border-top:1px solid var(--border)';
+  const rows = _fatVincCtes.map(c => {
+    const jaVinc = String(c.id_fatura) === String(_fatVincAtual.id);
+    const frete = c.valor_frete_cte || c.valor_frete_nf || 0;
+    return `<tr>
+      <td style="${td};text-align:center"><input type="checkbox" class="vinc-ck" data-id="${c.id}" data-frete="${frete}" ${jaVinc?'checked':''} onchange="_vincResumo()" style="width:17px;height:17px;cursor:pointer" /></td>
+      <td style="${td};font-weight:600">${c.num_cte||'—'}</td>
+      <td style="${td}">${_fmtD(c.data_emissao)}</td>
+      <td style="${td}">NF ${_integNfsTxt(c)}</td>
+      <td style="${td};max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.nome_destinatario||'—'}</td>
+      <td style="${td};text-align:right;font-variant-numeric:tabular-nums">${_R(frete)}</td>
+    </tr>`;
+  }).join('');
+  body.innerHTML = `<table style="width:100%;border-collapse:collapse">
+    <thead><tr><th style="${th}"></th><th style="${th}">CTe</th><th style="${th}">Data</th><th style="${th}">NF</th><th style="${th}">Destinatário</th><th style="${th};text-align:right">Frete</th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
+  _vincResumo();
+}
+
+function _vincResumo() {
+  const cks = [...document.querySelectorAll('.vinc-ck:checked')];
+  const soma = cks.reduce((s, ck) => s + (Number(ck.dataset.frete)||0), 0);
+  const alvo = Number(_fatVincAtual?.valor_total)||0;
+  const dif = soma - alvo;
+  const cor = Math.abs(dif) < 0.5 ? '#0F9D6E' : (Math.abs(dif) < alvo*0.05 ? '#E07B00' : 'var(--destructive)');
+  document.getElementById('integ-vinc-resumo').innerHTML =
+    `<b>${cks.length}</b> NF(s) · soma frete <b style="font-variant-numeric:tabular-nums">${_R(soma)}</b> · fatura ${_R(alvo)} · <span style="color:${cor};font-weight:700">dif ${_R(dif)}</span>`;
+}
+
+async function salvarVincFat() {
+  const f = _fatVincAtual; if (!f) return;
+  const marcados = [...document.querySelectorAll('.vinc-ck:checked')].map(ck => ck.dataset.id);
+  const todos = _fatVincCtes.map(c => String(c.id));
+  const meta = sb.auth.getUser ? (await sb.auth.getUser()).data?.user?.user_metadata : null;
+  const quem = meta?.nome || 'hub';
+  const hoje = new Date().toISOString();
+  try {
+    // marcados → vincula à fatura + lançado
+    if (marcados.length) {
+      await _sbWrite(`frt_conhecimentos?id=in.(${marcados.join(',')})`, 'PATCH', {
+        id_fatura: f.id, num_fatura: f.num_fatura, frete_vencimento: f.vencimento,
+        frete_lancado: true, frete_lancado_em: hoje, frete_lancado_por: quem,
+      }, 'return=minimal');
+    }
+    // desmarcados que ANTES estavam nesta fatura → solta
+    const desmarcados = todos.filter(id => !marcados.includes(id));
+    const paraSoltar = _fatVincCtes.filter(c => String(c.id_fatura) === String(f.id) && desmarcados.includes(String(c.id))).map(c => String(c.id));
+    if (paraSoltar.length) {
+      await _sbWrite(`frt_conhecimentos?id=in.(${paraSoltar.join(',')})`, 'PATCH', {
+        id_fatura: null, num_fatura: null, frete_lancado: false, frete_lancado_em: null, frete_lancado_por: null,
+      }, 'return=minimal');
+    }
+    // atualiza a fatura (qtd + status)
+    await _sbWrite(`frt_faturas?id=eq.${f.id}`, 'PATCH', {
+      qtd_ctes: marcados.length, status: marcados.length ? 'lancada' : 'aberta', atualizado_em: hoje,
+    }, 'return=minimal');
+    fecharVincFat();
+    await carregarFaturas();
+  } catch (e) { alert('Erro ao salvar vínculo: ' + e.message); }
+}
+
+function fecharVincFat() { document.getElementById('integ-vinc-overlay').style.display = 'none'; _fatVincAtual = null; _fatVincCtes = []; }
 
 function _fmtHrAtras(dtStr) {
   if (!dtStr) return '—';
