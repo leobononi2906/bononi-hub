@@ -1265,24 +1265,34 @@ function renderPendencias() {
   const arr = _integ.pendencias || [];
   if (!arr.length) { box.innerHTML = `<div style="padding:16px 0;font-size:13px;color:var(--muted)">Nenhum produto/kit pendente. 👍 Tudo resolvido.</div>`; return; }
   box.innerHTML = arr.map((s, i) => {
-    const badge = s.tipo === 'kit'
+    const faltaEmp = s.tipo === 'falta_na_empresa';
+    const badge = faltaEmp
+      ? '<span style="background:rgba(124,58,237,.14);color:#7C3AED;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700">FALTA NA EMPRESA</span>'
+      : s.tipo === 'kit'
       ? '<span style="background:rgba(224,123,0,.14);color:#E07B00;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700">KIT</span>'
       : '<span style="background:rgba(220,38,38,.12);color:var(--destructive);padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700">PRODUTO</span>';
+    const acao = faltaEmp
+      ? `<div style="font-size:12px;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+           ⚠️ Esse produto <b>existe no ERP</b>, mas não está cadastrado na <b>empresa ${s.id_empresa||'?'}</b> (${s.erro_ex||''}).<br>
+           Cadastre/ative o produto na empresa ${s.id_empresa||'?'} no ERP e clique em <b>↻ Reprocessar pedidos</b>. <span style="color:var(--muted)">(Se a empresa do canal estiver errada, ajuste na aba Canais.)</span>
+         </div>`
+      : `<div style="display:flex;gap:6px;margin-bottom:10px">
+           <button onclick="pendModo(${i},'produto')" id="pend-btn-prod-${i}" style="height:30px;padding:0 12px;border-radius:7px;font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;border:1px solid var(--blue);background:var(--blue);color:#fff">Apontar 1 produto</button>
+           <button onclick="pendModo(${i},'kit')" id="pend-btn-kit-${i}" style="height:30px;padding:0 12px;border-radius:7px;font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--muted)">Criar kit (vários)</button>
+         </div>
+         <div id="pend-corpo-${i}"></div>`;
     return `<div style="border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;background:var(--surface2)">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
         ${badge}
         <b style="font-size:14px;color:var(--text)">${s.sku_externo}</b>
         <span style="font-size:12px;color:var(--muted)">${s.descricao||''}</span>
+        <span style="font-size:11px;color:var(--muted)">· empresa ${s.id_empresa||'?'}</span>
         <span style="font-size:11px;color:var(--muted);margin-left:auto">${s.pedidos_travados} pedido(s) travado(s) · ex ${s.pedido_ex||'—'}</span>
       </div>
-      <div style="display:flex;gap:6px;margin-bottom:10px">
-        <button onclick="pendModo(${i},'produto')" id="pend-btn-prod-${i}" style="height:30px;padding:0 12px;border-radius:7px;font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;border:1px solid var(--blue);background:var(--blue);color:#fff">Apontar 1 produto</button>
-        <button onclick="pendModo(${i},'kit')" id="pend-btn-kit-${i}" style="height:30px;padding:0 12px;border-radius:7px;font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--muted)">Criar kit (vários)</button>
-      </div>
-      <div id="pend-corpo-${i}"></div>
+      ${acao}
     </div>`;
   }).join('');
-  arr.forEach((_, i) => pendModo(i, 'produto'));
+  arr.forEach((s, i) => { if (s.tipo !== 'falta_na_empresa') pendModo(i, 'produto'); });
 }
 
 function pendModo(i, modo) {
