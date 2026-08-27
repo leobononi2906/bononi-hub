@@ -581,6 +581,7 @@ body::before {
       </div>
       <div style="display:flex;gap:6px;margin-bottom:12px">
         <button id="integ-sub-btn-canais" onclick="setIntegSub('canais')" style="height:34px;padding:0 14px;border-radius:8px;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">🧭 Canais &amp; de-para</button>
+        <button id="integ-sub-btn-produtos" onclick="setIntegSub('produtos')" style="height:34px;padding:0 14px;border-radius:8px;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">🧩 Produtos &amp; Kits</button>
         <button id="integ-sub-btn-faturas" onclick="setIntegSub('faturas')" style="height:34px;padding:0 14px;border-radius:8px;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">💸 Faturas de frete</button>
       </div>
 
@@ -600,6 +601,24 @@ body::before {
           </div>
         </div>
         <div id="integ-canais-lista" style="padding:12px 18px 16px;overflow-x:auto">Carregando…</div>
+      </div>
+
+      <!-- Subaba PRODUTOS & KITS (resolver pendências) -->
+      <div id="integ-sub-produtos" style="display:none;border:1px solid var(--border);border-radius:14px;background:var(--surface);overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:10px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:16px">🧩</span>
+            <div>
+              <div style="font-size:14px;font-weight:700;color:var(--text)">Produtos &amp; Kits a resolver</div>
+              <div style="font-size:11px;color:var(--muted)">SKU que travou o pedido. <b>Aponte um produto</b> (SKU = 1 produto do ERP) ou <b>crie o kit</b> (vários componentes). Depois clique em Reprocessar.</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button onclick="reprocessarPendentes(this)" style="height:32px;padding:0 12px;background:linear-gradient(135deg,#0F9D6E,#0AA06E);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">↻ Reprocessar pedidos</button>
+            <button onclick="carregarPendencias()" style="height:32px;padding:0 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer">↻ Atualizar</button>
+          </div>
+        </div>
+        <div id="integ-pendencias-lista" style="padding:12px 18px 16px">Carregando…</div>
       </div>
 
       <!-- Subaba FATURAS DE FRETE -->
@@ -1098,15 +1117,17 @@ let _fatVincCtes = [];      // CTes candidatos no modal
 
 function setIntegSub(sub) {
   _integSub = sub;
-  const ehFat = sub === 'faturas';
-  document.getElementById('integ-sub-canais').style.display  = ehFat ? 'none' : '';
-  document.getElementById('integ-sub-faturas').style.display = ehFat ? '' : 'none';
+  document.getElementById('integ-sub-canais').style.display   = sub==='canais'   ? '' : 'none';
+  document.getElementById('integ-sub-produtos').style.display = sub==='produtos' ? '' : 'none';
+  document.getElementById('integ-sub-faturas').style.display  = sub==='faturas'  ? '' : 'none';
   const on = { bg:'var(--blue)', fg:'#fff', bd:'var(--blue)' };
   const off = { bg:'var(--surface2)', fg:'var(--muted)', bd:'var(--border)' };
-  const est = (b, s) => { b.style.background=s.bg; b.style.color=s.fg; b.style.border='1px solid '+s.bd; };
-  est(document.getElementById('integ-sub-btn-canais'),  ehFat?off:on);
-  est(document.getElementById('integ-sub-btn-faturas'), ehFat?on:off);
-  if (ehFat && !_integ.faturas.length) carregarFaturas();
+  const est = (id, ativo) => { const b=document.getElementById(id); const s=ativo?on:off; b.style.background=s.bg; b.style.color=s.fg; b.style.border='1px solid '+s.bd; };
+  est('integ-sub-btn-canais',   sub==='canais');
+  est('integ-sub-btn-produtos', sub==='produtos');
+  est('integ-sub-btn-faturas',  sub==='faturas');
+  if (sub==='faturas'  && !_integ.faturas.length) carregarFaturas();
+  if (sub==='produtos' && !_integ.pendencias) carregarPendencias();
 }
 
 async function carregarIntegrador() {
@@ -1224,6 +1245,144 @@ async function integSalvarCanal(i) {
     const btn = document.querySelector(`#integ-row-${i} button`);
     if (btn) { btn.textContent = '✓ Salvo'; btn.style.background = '#0F9D6E'; setTimeout(() => { btn.textContent = 'Salvar'; btn.style.background = 'linear-gradient(135deg,var(--blue),#0284C7)'; }, 1400); }
   } catch (e) { alert('Erro ao salvar canal: ' + e.message); }
+}
+
+// ── Produtos & Kits (resolver pendências) ──
+async function carregarPendencias() {
+  const box = document.getElementById('integ-pendencias-lista');
+  box.innerHTML = 'Carregando…';
+  try {
+    const p = await _sbGet('vw_integ_skus_pendentes?select=*');
+    _integ.pendencias = Array.isArray(p) ? p : [];
+    renderPendencias();
+  } catch (e) {
+    box.innerHTML = `<div style="color:var(--destructive);font-size:13px">Erro ao ler pendências: ${e.message}</div>`;
+  }
+}
+
+function renderPendencias() {
+  const box = document.getElementById('integ-pendencias-lista');
+  const arr = _integ.pendencias || [];
+  if (!arr.length) { box.innerHTML = `<div style="padding:16px 0;font-size:13px;color:var(--muted)">Nenhum produto/kit pendente. 👍 Tudo resolvido.</div>`; return; }
+  box.innerHTML = arr.map((s, i) => {
+    const badge = s.tipo === 'kit'
+      ? '<span style="background:rgba(224,123,0,.14);color:#E07B00;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700">KIT</span>'
+      : '<span style="background:rgba(220,38,38,.12);color:var(--destructive);padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700">PRODUTO</span>';
+    return `<div style="border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;background:var(--surface2)">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+        ${badge}
+        <b style="font-size:14px;color:var(--text)">${s.sku_externo}</b>
+        <span style="font-size:12px;color:var(--muted)">${s.descricao||''}</span>
+        <span style="font-size:11px;color:var(--muted);margin-left:auto">${s.pedidos_travados} pedido(s) travado(s) · ex ${s.pedido_ex||'—'}</span>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:10px">
+        <button onclick="pendModo(${i},'produto')" id="pend-btn-prod-${i}" style="height:30px;padding:0 12px;border-radius:7px;font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;border:1px solid var(--blue);background:var(--blue);color:#fff">Apontar 1 produto</button>
+        <button onclick="pendModo(${i},'kit')" id="pend-btn-kit-${i}" style="height:30px;padding:0 12px;border-radius:7px;font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--muted)">Criar kit (vários)</button>
+      </div>
+      <div id="pend-corpo-${i}"></div>
+    </div>`;
+  }).join('');
+  arr.forEach((_, i) => pendModo(i, 'produto'));
+}
+
+function pendModo(i, modo) {
+  _integ.pendencias[i]._modo = modo;
+  const on={bg:'var(--blue)',fg:'#fff',bd:'var(--blue)'}, off={bg:'var(--surface)',fg:'var(--muted)',bd:'var(--border)'};
+  const set=(id,a)=>{const b=document.getElementById(id);const s=a?on:off;b.style.background=s.bg;b.style.color=s.fg;b.style.border='1px solid '+s.bd;};
+  set(`pend-btn-prod-${i}`, modo==='produto'); set(`pend-btn-kit-${i}`, modo==='kit');
+  const corpo = document.getElementById(`pend-corpo-${i}`);
+  const inp = 'height:36px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:var(--input-bg);font-size:13px;font-family:\'DM Sans\',sans-serif;color:var(--text)';
+  if (modo === 'produto') {
+    corpo.innerHTML = `
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input id="pend-busca-${i}" oninput="buscarProduto(${i})" placeholder="buscar produto do ERP (nome ou referência)…" style="${inp};flex:1;min-width:220px" />
+        <span style="font-size:11px;color:var(--muted)">ou código:</span>
+        <input id="pend-idprod-${i}" type="number" placeholder="id" style="${inp};width:100px" />
+        <button onclick="mapearSku(${i})" style="height:36px;padding:0 14px;background:linear-gradient(135deg,var(--blue),#0284C7);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">Salvar de-para</button>
+      </div>
+      <div id="pend-result-${i}" style="margin-top:6px"></div>`;
+  } else {
+    _integ.pendencias[i]._comps = _integ.pendencias[i]._comps || [{}];
+    corpo.innerHTML = `
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Componentes do kit (produto do ERP + quantidade):</div>
+      <div id="pend-comps-${i}"></div>
+      <button onclick="kitAddComp(${i})" style="height:30px;padding:0 12px;margin-top:6px;background:var(--surface);border:1px dashed var(--border);border-radius:8px;color:var(--blue);font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer">+ componente</button>
+      <button onclick="salvarKit(${i})" style="height:34px;padding:0 14px;margin-top:6px;margin-left:8px;background:linear-gradient(135deg,var(--blue),#0284C7);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">Salvar kit</button>`;
+    renderKitComps(i);
+  }
+}
+
+async function buscarProduto(i) {
+  const q = document.getElementById(`pend-busca-${i}`).value.trim();
+  const res = document.getElementById(`pend-result-${i}`);
+  if (q.length < 2) { res.innerHTML=''; return; }
+  try {
+    const enc = encodeURIComponent(`*${q}*`);
+    const rows = await _sbGet(`vw_fb_produtos_compras?select=id_produto,referencia,nome&or=(nome.ilike.${enc},referencia.ilike.${enc})&limit=8`);
+    res.innerHTML = (rows||[]).map(r =>
+      `<div onclick="pickProduto(${i},${r.id_produto})" style="padding:6px 8px;border-top:1px solid var(--border);font-size:12px;cursor:pointer;color:var(--text)"><b>${r.id_produto}</b> · ${r.referencia||''} — ${r.nome||''}</div>`
+    ).join('') || `<div style="font-size:12px;color:var(--muted);padding:4px">nada encontrado</div>`;
+  } catch(e){ res.innerHTML = `<div style="font-size:12px;color:var(--destructive)">${e.message}</div>`; }
+}
+function pickProduto(i, id) { document.getElementById(`pend-idprod-${i}`).value = id; document.getElementById(`pend-result-${i}`).innerHTML = `<div style="font-size:12px;color:#0F9D6E;padding:4px">✓ produto ${id} selecionado</div>`; }
+
+async function mapearSku(i) {
+  const s = _integ.pendencias[i];
+  const idProd = Number(document.getElementById(`pend-idprod-${i}`).value);
+  if (!idProd) { alert('Escolha um produto do ERP.'); return; }
+  try {
+    await _sbWrite('integ_map_produto?on_conflict=origem,sku_externo', 'POST', { origem: s.origem_ex || 'bling', sku_externo: s.sku_externo, id_produto: idProd, descricao: s.descricao || null }, 'return=minimal,resolution=merge-duplicates');
+    document.getElementById(`pend-corpo-${i}`).innerHTML = `<div style="font-size:13px;color:#0F9D6E;font-weight:600">✓ ${s.sku_externo} → produto ${idProd}. Clique em “Reprocessar pedidos” pra destravar.</div>`;
+  } catch(e){ alert('Erro ao salvar de-para: ' + e.message); }
+}
+
+// kit builder
+function renderKitComps(i) {
+  const box = document.getElementById(`pend-comps-${i}`);
+  const comps = _integ.pendencias[i]._comps;
+  const inp = 'height:34px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:var(--input-bg);font-size:13px;font-family:\'DM Sans\',sans-serif;color:var(--text)';
+  box.innerHTML = comps.map((c, j) => `
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
+      <input value="${c._busca||''}" oninput="kitBusca(${i},${j},this.value)" placeholder="buscar produto…" style="${inp};flex:1;min-width:180px" />
+      <input type="number" value="${c.id_produto||''}" oninput="_integ.pendencias[${i}]._comps[${j}].id_produto=Number(this.value)" placeholder="id" style="${inp};width:90px" />
+      <input type="number" value="${c.qtd||1}" oninput="_integ.pendencias[${i}]._comps[${j}].qtd=Number(this.value)" placeholder="qtd" style="${inp};width:70px" />
+      <button onclick="kitDelComp(${i},${j})" style="height:34px;width:34px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--muted);cursor:pointer">✕</button>
+      <div id="pend-kitres-${i}-${j}" style="font-size:11px"></div>
+    </div>`).join('');
+}
+function kitAddComp(i){ _integ.pendencias[i]._comps.push({qtd:1}); renderKitComps(i); }
+function kitDelComp(i,j){ _integ.pendencias[i]._comps.splice(j,1); if(!_integ.pendencias[i]._comps.length)_integ.pendencias[i]._comps.push({qtd:1}); renderKitComps(i); }
+async function kitBusca(i,j,q){
+  _integ.pendencias[i]._comps[j]._busca = q;
+  const res = document.getElementById(`pend-kitres-${i}-${j}`);
+  if ((q||'').trim().length<2){ res.innerHTML=''; return; }
+  try{
+    const enc = encodeURIComponent(`*${q.trim()}*`);
+    const rows = await _sbGet(`vw_fb_produtos_compras?select=id_produto,referencia,nome&or=(nome.ilike.${enc},referencia.ilike.${enc})&limit=6`);
+    res.innerHTML = (rows||[]).map(r=>`<span onclick="kitPick(${i},${j},${r.id_produto})" title="${(r.nome||'').replace(/"/g,'')}" style="display:inline-block;margin:2px;padding:2px 6px;border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--blue)">${r.id_produto}·${r.referencia||''}</span>`).join('');
+  }catch(_){}
+}
+function kitPick(i,j,id){ _integ.pendencias[i]._comps[j].id_produto=id; renderKitComps(i); }
+async function salvarKit(i){
+  const s = _integ.pendencias[i];
+  const comps = (s._comps||[]).filter(c=>c.id_produto).map(c=>({ id_produto:Number(c.id_produto), qtd:Number(c.qtd||1) }));
+  if (!comps.length){ alert('Adicione ao menos 1 componente com produto do ERP.'); return; }
+  try{
+    await _sbWrite('geral_bling_composicoes?on_conflict=sku_bling', 'POST',
+      { sku_bling: s.sku_externo, nome_bling: s.descricao||null, itens: comps, ativo:true, status:'validado', validado_em:new Date().toISOString(), validado_por:'hub' },
+      'return=minimal,resolution=merge-duplicates');
+    document.getElementById(`pend-corpo-${i}`).innerHTML = `<div style="font-size:13px;color:#0F9D6E;font-weight:600">✓ Kit ${s.sku_externo} criado (${comps.length} componente(s)). Clique em “Reprocessar pedidos”.</div>`;
+  }catch(e){ alert('Erro ao salvar kit: ' + e.message); }
+}
+
+async function reprocessarPendentes(btn) {
+  if (btn) { btn.textContent = '⏳ Reprocessando…'; btn.disabled = true; }
+  try {
+    const r = await fetch(SUPA_URL + '/functions/v1/integ-montar-pedido?conta=bononi,mlb&limite=60', { headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY } });
+    await r.text();
+    await carregarPendencias();
+    if (btn) { btn.textContent = '✓ Reprocessado'; setTimeout(()=>{ btn.textContent='↻ Reprocessar pedidos'; btn.disabled=false; }, 1600); }
+  } catch(e){ if (btn){ btn.textContent='Erro'; btn.disabled=false; } alert('Erro ao reprocessar: ' + e.message); }
 }
 
 // ── Faturas de frete ──
