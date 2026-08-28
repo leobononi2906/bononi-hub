@@ -1289,41 +1289,79 @@ function _optsVend(idEmp, sel) {
     `<option value="${v.id_vendedor}"${Number(sel)===v.id_vendedor?' selected':''}>${v.id_vendedor} · ${v.nome_vendedor}</option>`).join('');
 }
 
+const _CONTA_LABEL = { bononi: 'Bononi', mlb: 'MLB', battogo: 'Battogo', outros: 'Outros' };
+let _integGruposAbertos = null;   // Set de contas expandidas
+function _integCanalCompleto(c) { return !!(c.id_empresa && c.id_tipo_saida && c.id_vendedor && c.id_condpag && c.id_centro_estoque); }
+
+function _integCanalRow(c, i) {
+  const emp = c.id_empresa || '';
+  const stBdg = _integCanalCompleto(c) ? '<span class="bdg bdg-ok">completo</span>' : '<span class="bdg bdg-warn">a configurar</span>';
+  const ident = `<span class="mono" style="font-size:11px">loja ${c.loja_id||'—'}</span>${c.qtd_amostra?` · ${c.qtd_amostra} ped`:''}${c.dica_numeroloja?`<br><span style="opacity:.75">${c.dica_numeroloja}</span>`:''}`;
+  return `<tr id="integ-row-${i}">
+    <td style="min-width:210px">
+      <input class="f-inp" value="${c.nome||c.canal||''}" oninput="_integCampo(${i},'nome',this.value)" placeholder="nome do tipo de venda" style="width:100%;max-width:210px" />
+      <div style="font-size:10px;color:var(--muted);margin-top:4px;line-height:1.5">${ident}</div>
+    </td>
+    <td>${stBdg}</td>
+    <td><select class="f-inp" onchange="_integCampo(${i},'id_empresa',this.value); _integRecarregaDeps(${i})" style="cursor:pointer;width:150px">${_optsEmpresa(emp)}</select></td>
+    <td><input class="f-inp" type="number" value="${c.id_tipo_saida??''}" oninput="_integCampo(${i},'id_tipo_saida',this.value)" placeholder="cód" title="Operação/tipo de saída (ERP)" style="width:66px" /></td>
+    <td><select class="f-inp" id="integ-vend-${i}" onchange="_integCampo(${i},'id_vendedor',this.value)" style="cursor:pointer;width:190px">${_optsVend(emp, c.id_vendedor)}</select></td>
+    <td><input class="f-inp" type="number" value="${c.id_condpag??''}" oninput="_integCampo(${i},'id_condpag',this.value)" placeholder="cód" title="Cond. pagamento (ERP)" style="width:66px" /></td>
+    <td><select class="f-inp" id="integ-centro-${i}" onchange="_integCampo(${i},'id_centro_estoque',this.value)" style="cursor:pointer;width:180px">${_optsCentro(emp, c.id_centro_estoque)}</select></td>
+    <td style="text-align:center"><input type="checkbox" ${c.finalizar!==false?'checked':''} onchange="_integCampo(${i},'finalizar',this.checked)" title="Marcado = grava a venda já finalizada no ERP. Desmarcado = entra pendente/a conferir." style="width:18px;height:18px;cursor:pointer;accent-color:#0F9D6E" /></td>
+    <td style="text-align:center"><input type="checkbox" ${c.ativo!==false?'checked':''} onchange="_integCampo(${i},'ativo',this.checked)" style="width:18px;height:18px;cursor:pointer;accent-color:var(--blue)" /></td>
+    <td><button onclick="integSalvarCanal(${i})" class="btn-p">Salvar</button></td>
+  </tr>`;
+}
+
+function toggleIntegGrupo(conta) {
+  if (!_integGruposAbertos) _integGruposAbertos = new Set();
+  if (_integGruposAbertos.has(conta)) _integGruposAbertos.delete(conta); else _integGruposAbertos.add(conta);
+  renderIntegCanais();
+}
+
 function renderIntegCanais() {
   const box = document.getElementById('integ-canais-lista');
+  renderIntegKpis();
   if (!_integ.cfg.length) {
-    box.innerHTML = `<div style="padding:12px 0;font-size:13px;color:var(--muted)">Nenhum canal configurado. Clique <b>+ Canal</b> pra começar.</div>`;
+    box.innerHTML = `<div style="padding:20px 0;font-size:13px;color:var(--muted)">Nenhum canal configurado. Clique <b>+ Canal</b> pra começar.</div>`;
     return;
   }
-  const rows = _integ.cfg.map((c, i) => {
-    const emp = c.id_empresa || '';
-    const completo = c.id_empresa && c.id_tipo_saida && c.id_vendedor && c.id_condpag && c.id_centro_estoque;
-    const stBdg = completo ? '<span class="bdg bdg-ok">completo</span>' : '<span class="bdg bdg-warn">a configurar</span>';
-    const ident = `${c.conta?`<b>${c.conta}</b> · `:''}<span class="mono" style="font-size:11px">loja ${c.loja_id||'—'}</span>${c.qtd_amostra?` · ${c.qtd_amostra} ped`:''}${c.dica_numeroloja?`<br><span style="opacity:.75">${c.dica_numeroloja}</span>`:''}`;
-    return `<tr id="integ-row-${i}">
-      <td style="min-width:210px">
-        <input class="f-inp" value="${c.nome||c.canal||''}" oninput="_integCampo(${i},'nome',this.value)" placeholder="nome do canal" style="width:100%;max-width:210px" />
-        <div style="font-size:10px;color:var(--muted);margin-top:4px;line-height:1.5">${ident}</div>
-      </td>
-      <td>${stBdg}</td>
-      <td><select class="f-inp" onchange="_integCampo(${i},'id_empresa',this.value); _integRecarregaDeps(${i})" style="cursor:pointer;width:150px">${_optsEmpresa(emp)}</select></td>
-      <td><input class="f-inp" type="number" value="${c.id_tipo_saida??''}" oninput="_integCampo(${i},'id_tipo_saida',this.value)" placeholder="cód" title="Operação/tipo de saída (ERP)" style="width:66px" /></td>
-      <td><select class="f-inp" id="integ-vend-${i}" onchange="_integCampo(${i},'id_vendedor',this.value)" style="cursor:pointer;width:190px">${_optsVend(emp, c.id_vendedor)}</select></td>
-      <td><input class="f-inp" type="number" value="${c.id_condpag??''}" oninput="_integCampo(${i},'id_condpag',this.value)" placeholder="cód" title="Cond. pagamento (ERP)" style="width:66px" /></td>
-      <td><select class="f-inp" id="integ-centro-${i}" onchange="_integCampo(${i},'id_centro_estoque',this.value)" style="cursor:pointer;width:180px">${_optsCentro(emp, c.id_centro_estoque)}</select></td>
-      <td style="text-align:center"><input type="checkbox" ${c.finalizar!==false?'checked':''} onchange="_integCampo(${i},'finalizar',this.checked)" title="Marcado = grava a venda já finalizada no ERP. Desmarcado = entra pendente/a conferir." style="width:18px;height:18px;cursor:pointer;accent-color:#0F9D6E" /></td>
-      <td style="text-align:center"><input type="checkbox" ${c.ativo!==false?'checked':''} onchange="_integCampo(${i},'ativo',this.checked)" style="width:18px;height:18px;cursor:pointer;accent-color:var(--blue)" /></td>
-      <td><button onclick="integSalvarCanal(${i})" class="btn-p">Salvar</button></td>
-    </tr>`;
-  }).join('');
-  box.innerHTML = `<div class="tscroll"><table class="dtable" style="min-width:1020px">
-    <thead><tr>
-      <th>Canal (loja Bling)</th><th>Status</th><th>Empresa</th>
-      <th>Operação</th><th>Vendedor</th><th>Cond. Pagto</th>
-      <th>Centro estoque</th><th style="text-align:center" title="Grava a venda já finalizada no ERP?">Finalizar</th><th style="text-align:center">Ativo</th><th></th>
-    </tr></thead><tbody>${rows}</tbody></table></div>
-    <div style="margin-top:12px;font-size:11px;color:var(--muted)">💡 Cada <b>loja</b> do Bling é um canal (ML, ML Full, Shopee, site…). <b>Operação</b> e <b>Cond. Pagto</b> são códigos do ERP. Vendedor ML Bononi = <b>79830</b> (normal) / <b>79831</b> (Full).</div>`;
-  renderIntegKpis();
+  // agrupa por conta (integrador), preservando o índice original de _integ.cfg
+  const grupos = {};
+  _integ.cfg.forEach((c, i) => { const k = c.conta || 'outros'; (grupos[k] = grupos[k] || []).push(i); });
+  const ordem = Object.keys(grupos).sort((a,b) => grupos[b].length - grupos[a].length);
+  // 1ª vez: abre os integradores que ainda têm canal incompleto (ou todos, se tudo completo)
+  if (!_integGruposAbertos) {
+    _integGruposAbertos = new Set();
+    ordem.forEach(conta => { if (grupos[conta].some(i => !_integCanalCompleto(_integ.cfg[i]))) _integGruposAbertos.add(conta); });
+    if (!_integGruposAbertos.size) ordem.forEach(c => _integGruposAbertos.add(c));
+  }
+  const thead = `<thead><tr>
+    <th>Tipo de venda (loja)</th><th>Status</th><th>Empresa</th><th>Operação</th><th>Vendedor</th>
+    <th>Cond. Pagto</th><th>Centro estoque</th><th style="text-align:center" title="Grava a venda já finalizada no ERP?">Finalizar</th><th style="text-align:center">Ativo</th><th></th>
+  </tr></thead>`;
+  box.innerHTML = ordem.map(conta => {
+    const idxs = grupos[conta];
+    const aberto = _integGruposAbertos.has(conta);
+    const n = idxs.length;
+    const compl = idxs.filter(i => _integCanalCompleto(_integ.cfg[i])).length;
+    const emps = [...new Set(idxs.map(i => _integ.cfg[i].id_empresa).filter(Boolean))];
+    const chip = compl===n ? `<span class="bdg bdg-ok">${n}/${n} ok</span>` : `<span class="bdg bdg-warn">${compl}/${n} config</span>`;
+    const rows = idxs.map(i => _integCanalRow(_integ.cfg[i], i)).join('');
+    return `<div class="tcard" style="margin-bottom:12px">
+      <div onclick="toggleIntegGrupo('${conta}')" style="display:flex;align-items:center;gap:12px;padding:14px 18px;cursor:pointer${aberto?';border-bottom:1px solid var(--border)':''}">
+        <span style="font-size:11px;color:var(--muted);display:inline-block;transition:transform .15s;transform:rotate(${aberto?90:0}deg)">▶</span>
+        <span style="font-size:16px">🔌</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:700;color:var(--text)">${_CONTA_LABEL[conta]||conta} <span style="font-size:11px;font-weight:600;color:var(--muted)">· via Bling</span></div>
+          <div style="font-size:11px;color:var(--muted)">${n} tipo(s) de venda${emps.length?` · empresa ${emps.join(', ')}`:''}</div>
+        </div>
+        ${chip}
+      </div>
+      <div style="display:${aberto?'block':'none'}"><div class="tscroll"><table class="dtable" style="min-width:1080px">${thead}<tbody>${rows}</tbody></table></div></div>
+    </div>`;
+  }).join('') + `<div style="margin-top:4px;font-size:11px;color:var(--muted)">💡 Cada <b>integrador</b> agrupa seus <b>tipos de venda</b> (ML, ML Full, Shopee, site…). Clique no integrador pra expandir. <b>Operação</b>/<b>Cond. Pagto</b> = códigos do ERP.</div>`;
 }
 
 function _integCampo(i, campo, val) {
@@ -1342,6 +1380,8 @@ function _integRecarregaDeps(i) {
 }
 function integNovoCanal() {
   _integ.cfg.unshift({ canal:'', nome:'', conta:null, loja_id:null, id_empresa:null, id_tipo_saida:null, id_vendedor:null, id_condpag:null, id_centro_estoque:null, finalizar:true, ativo:true, _novo:true });
+  if (!_integGruposAbertos) _integGruposAbertos = new Set();
+  _integGruposAbertos.add('outros');   // abre o grupo do canal novo
   renderIntegCanais();
 }
 async function integSalvarCanal(i) {
