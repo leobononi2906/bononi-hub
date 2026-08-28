@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bononi — Portal</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -377,6 +377,36 @@ body::before {
 @media (max-width: 400px) {
   .apps-grid { grid-template-columns: 1fr; }
 }
+/* ══════ Padrão visual Bononi (igual Bononi Loja) — usado no Integrador ══════ */
+.mono { font-family: 'DM Mono', ui-monospace, monospace; }
+.seg { display:inline-flex; flex-wrap:wrap; background:var(--surface2); border:1px solid var(--border); border-radius:11px; padding:3px; gap:2px; }
+.seg button { height:36px; padding:0 16px; border:none; background:transparent; border-radius:8px; font-size:13px; font-weight:600; font-family:'DM Sans',sans-serif; color:var(--muted); cursor:pointer; transition:all .15s; white-space:nowrap; }
+.seg button.on { background:var(--surface); color:var(--blue); box-shadow:0 1px 3px rgba(15,29,53,.12); font-weight:700; }
+.tcard { background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:0 1px 3px rgba(15,29,53,.05); overflow:hidden; }
+.tcard-h { padding:14px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.tcard-h .t { font-size:14px; font-weight:700; color:var(--text); }
+.tcard-h .s { font-size:11px; color:var(--muted); margin-top:2px; }
+.tcard-body { padding:14px 18px; }
+.tscroll { overflow-x:auto; }
+.dtable { width:100%; border-collapse:collapse; font-size:13px; }
+.dtable th { padding:9px 12px; text-align:left; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#9AA5B8; background:var(--surface2); border-bottom:1px solid var(--border); white-space:nowrap; }
+.dtable td { padding:10px 12px; border-bottom:1px solid var(--border); color:var(--text); vertical-align:middle; }
+.dtable tbody tr:last-child td { border-bottom:none; }
+.dtable tbody tr:hover td { background:var(--surface2); }
+.bdg { display:inline-flex; align-items:center; gap:4px; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; padding:3px 9px; border-radius:6px; white-space:nowrap; }
+.bdg-ok { background:#E8F8F3; color:#0F9D6E; } .bdg-warn { background:#FEF5E7; color:#E07B00; }
+.bdg-red { background:#FEF0EF; color:#D93025; } .bdg-info { background:#E8F4FD; color:#0077CC; }
+.bdg-muted { background:var(--surface2); color:var(--muted); } .bdg-violet { background:#F1ECFE; color:#7C3AED; }
+.kpi-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(128px,1fr)); gap:12px; margin-bottom:18px; }
+.kpi { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px; box-shadow:0 1px 3px rgba(15,29,53,.04); }
+.kpi .v { font-family:'DM Mono',monospace; font-size:24px; font-weight:600; letter-spacing:-.5px; color:var(--text); line-height:1; }
+.kpi .l { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-top:7px; }
+.f-inp { height:38px; padding:0 10px; border:1px solid var(--border); border-radius:9px; background:var(--input-bg); font-size:13px; font-family:'DM Sans',sans-serif; color:var(--text); outline:none; }
+.f-inp:focus { border-color:var(--blue); }
+.btn-p { display:inline-flex; align-items:center; justify-content:center; height:36px; padding:0 14px; background:linear-gradient(135deg,var(--blue),#0077CC); border:none; border-radius:9px; color:#fff; font-size:12px; font-weight:700; font-family:'DM Sans',sans-serif; cursor:pointer; }
+.btn-s { display:inline-flex; align-items:center; justify-content:center; height:36px; padding:0 12px; background:var(--surface2); border:1px solid var(--border); border-radius:9px; color:var(--muted); font-size:12px; font-weight:600; font-family:'DM Sans',sans-serif; cursor:pointer; }
+.btn-ok { background:linear-gradient(135deg,#0F9D6E,#0AA06E); color:#fff; border:none; }
+
 /* Modais no celular: rolam dentro do overlay e ocupam a largura toda,
    pra o botão de ação (ex. Salvar) nunca ficar fora da tela. */
 @media (max-width: 640px) {
@@ -529,7 +559,7 @@ body::before {
     <div id="config-panel" style="display:none;margin-top:40px">
       <div style="margin-bottom:20px">
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--blue);margin-bottom:4px">Configuração</div>
-        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800">Integrações &amp; Canais</div>
+        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800">Sincronização &amp; Umbler</div>
         <div style="font-size:13px;color:var(--muted);margin-top:4px">Saúde da replicação do ERP e classificação dos canais da Umbler.</div>
       </div>
 
@@ -603,11 +633,12 @@ body::before {
         <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800">Bling → ERP &amp; Frete</div>
         <div style="font-size:13px;color:var(--muted);margin-top:4px">Recebe os pedidos do Bling (canais, produtos/kits) e lança o frete no contas a pagar.</div>
       </div>
-      <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
-        <button id="integ-sub-btn-canais" onclick="setIntegSub('canais')" style="height:34px;padding:0 14px;border-radius:8px;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">🧭 Canais &amp; de-para</button>
-        <button id="integ-sub-btn-produtos" onclick="setIntegSub('produtos')" style="height:34px;padding:0 14px;border-radius:8px;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">🧩 Produtos &amp; Kits</button>
-        <button id="integ-sub-btn-faturas" onclick="setIntegSub('faturas')" style="height:34px;padding:0 14px;border-radius:8px;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">💸 Faturas de frete</button>
+      <div class="seg" style="margin-bottom:18px">
+        <button id="integ-sub-btn-canais" onclick="setIntegSub('canais')">🧭 Canais</button>
+        <button id="integ-sub-btn-produtos" onclick="setIntegSub('produtos')">🧩 Produtos &amp; Kits</button>
+        <button id="integ-sub-btn-faturas" onclick="setIntegSub('faturas')">💸 Faturas de frete</button>
       </div>
+      <div id="integ-kpis" class="kpi-row"></div>
 
       <!-- Subaba CANAIS & DE-PARA -->
       <div id="integ-sub-canais" style="border:1px solid var(--border);border-radius:14px;background:var(--surface);overflow:hidden">
@@ -1180,14 +1211,35 @@ function setIntegSub(sub) {
   document.getElementById('integ-sub-canais').style.display   = sub==='canais'   ? '' : 'none';
   document.getElementById('integ-sub-produtos').style.display = sub==='produtos' ? '' : 'none';
   document.getElementById('integ-sub-faturas').style.display  = sub==='faturas'  ? '' : 'none';
-  const on = { bg:'var(--blue)', fg:'#fff', bd:'var(--blue)' };
-  const off = { bg:'var(--surface2)', fg:'var(--muted)', bd:'var(--border)' };
-  const est = (id, ativo) => { const b=document.getElementById(id); const s=ativo?on:off; b.style.background=s.bg; b.style.color=s.fg; b.style.border='1px solid '+s.bd; };
-  est('integ-sub-btn-canais',   sub==='canais');
-  est('integ-sub-btn-produtos', sub==='produtos');
-  est('integ-sub-btn-faturas',  sub==='faturas');
+  ['canais','produtos','faturas'].forEach(k => document.getElementById('integ-sub-btn-'+k).classList.toggle('on', k===sub));
   if (sub==='faturas'  && !_integ.faturas.length) carregarFaturas();
   if (sub==='produtos' && !_integ.pendencias) carregarPendencias();
+  renderIntegKpis();
+}
+
+// KPIs do topo (por sub-aba) — cartões estilo Bononi Loja
+function renderIntegKpis() {
+  const box = document.getElementById('integ-kpis'); if (!box) return;
+  const kpi = (v, l, cor) => `<div class="kpi"><div class="v"${cor?` style="color:${cor}"`:''}>${v}</div><div class="l">${l}</div></div>`;
+  let html = '';
+  if (_integSub === 'canais') {
+    const cfg = _integ.cfg || [];
+    const compl = cfg.filter(c => c.id_empresa && c.id_tipo_saida && c.id_vendedor && c.id_condpag && c.id_centro_estoque).length;
+    const emps = new Set(cfg.filter(c => c.id_empresa).map(c => c.id_empresa)).size;
+    html = kpi(cfg.length, 'Canais') + kpi(compl, 'Configurados', (cfg.length && compl===cfg.length) ? '#0F9D6E' : (compl<cfg.length?'#E07B00':'')) + kpi(emps, 'Empresas');
+  } else if (_integSub === 'produtos') {
+    const p = _integ.pendencias || [];
+    const kits = p.filter(x => x.tipo==='kit').length;
+    const falta = p.filter(x => x.tipo==='falta_na_empresa').length;
+    const trav = p.reduce((s,x) => s + (x.pedidos_travados||0), 0);
+    html = kpi(p.length, 'Pendências', p.length ? '#E07B00' : '#0F9D6E') + kpi(kits, 'Kits') + kpi(falta, 'Falta empresa') + kpi(trav, 'Pedidos travados', trav?'#D93025':'');
+  } else if (_integSub === 'faturas') {
+    const f = _integ.faturas || [];
+    const abertas = f.filter(x => x.status !== 'lancada').length;
+    const val = f.reduce((s,x) => s + (Number(x.valor_total)||0), 0);
+    html = kpi(f.length, 'Faturas') + kpi(abertas, 'Abertas', abertas?'#E07B00':'') + `<div class="kpi"><div class="v mono" style="font-size:19px">${_R(val)}</div><div class="l">Valor total</div></div>`;
+  }
+  box.innerHTML = html;
 }
 
 async function carregarIntegrador() {
@@ -1240,33 +1292,34 @@ function renderIntegCanais() {
     box.innerHTML = `<div style="padding:12px 0;font-size:13px;color:var(--muted)">Nenhum canal configurado. Clique <b>+ Canal</b> pra começar.</div>`;
     return;
   }
-  const th = 'text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:8px 8px;white-space:nowrap';
-  const td = 'padding:8px 8px;vertical-align:middle';
-  const inp = 'height:38px;padding:0 8px;border:1px solid var(--border);border-radius:8px;background:var(--input-bg);font-size:12px;font-family:\'DM Sans\',sans-serif;color:var(--text)';
   const rows = _integ.cfg.map((c, i) => {
     const emp = c.id_empresa || '';
-    const ident = `${c.conta?`<b>${c.conta}</b> · `:''}loja ${c.loja_id||'—'}${c.qtd_amostra?` · ${c.qtd_amostra} ped`:''}${c.dica_numeroloja?`<br><span style="opacity:.8">${c.dica_numeroloja}</span>`:''}`;
-    return `<tr id="integ-row-${i}" style="border-top:1px solid var(--border)">
-      <td style="${td}">
-        <input value="${c.nome||c.canal||''}" oninput="_integCampo(${i},'nome',this.value)" placeholder="nome do canal" style="${inp};width:190px" />
-        <div style="font-size:10px;color:var(--muted);margin-top:3px;line-height:1.4">${ident}</div>
+    const completo = c.id_empresa && c.id_tipo_saida && c.id_vendedor && c.id_condpag && c.id_centro_estoque;
+    const stBdg = completo ? '<span class="bdg bdg-ok">completo</span>' : '<span class="bdg bdg-warn">a configurar</span>';
+    const ident = `${c.conta?`<b>${c.conta}</b> · `:''}<span class="mono" style="font-size:11px">loja ${c.loja_id||'—'}</span>${c.qtd_amostra?` · ${c.qtd_amostra} ped`:''}${c.dica_numeroloja?`<br><span style="opacity:.75">${c.dica_numeroloja}</span>`:''}`;
+    return `<tr id="integ-row-${i}">
+      <td style="min-width:210px">
+        <input class="f-inp" value="${c.nome||c.canal||''}" oninput="_integCampo(${i},'nome',this.value)" placeholder="nome do canal" style="width:100%;max-width:210px" />
+        <div style="font-size:10px;color:var(--muted);margin-top:4px;line-height:1.5">${ident}</div>
       </td>
-      <td style="${td}"><select onchange="_integCampo(${i},'id_empresa',this.value); _integRecarregaDeps(${i})" style="${inp};cursor:pointer;width:160px">${_optsEmpresa(emp)}</select></td>
-      <td style="${td}"><input type="number" value="${c.id_tipo_saida??''}" oninput="_integCampo(${i},'id_tipo_saida',this.value)" placeholder="cód" title="Código da operação/tipo de saída no ERP" style="${inp};width:70px" /></td>
-      <td style="${td}"><select id="integ-vend-${i}" onchange="_integCampo(${i},'id_vendedor',this.value)" style="${inp};cursor:pointer;width:200px">${_optsVend(emp, c.id_vendedor)}</select></td>
-      <td style="${td}"><input type="number" value="${c.id_condpag??''}" oninput="_integCampo(${i},'id_condpag',this.value)" placeholder="cód" title="Código da condição de pagamento no ERP" style="${inp};width:70px" /></td>
-      <td style="${td}"><select id="integ-centro-${i}" onchange="_integCampo(${i},'id_centro_estoque',this.value)" style="${inp};cursor:pointer;width:190px">${_optsCentro(emp, c.id_centro_estoque)}</select></td>
-      <td style="${td};text-align:center"><input type="checkbox" ${c.ativo!==false?'checked':''} onchange="_integCampo(${i},'ativo',this.checked)" style="width:18px;height:18px;cursor:pointer" /></td>
-      <td style="${td}"><button onclick="integSalvarCanal(${i})" style="height:36px;padding:0 12px;background:linear-gradient(135deg,var(--blue),#0284C7);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">Salvar</button></td>
+      <td>${stBdg}</td>
+      <td><select class="f-inp" onchange="_integCampo(${i},'id_empresa',this.value); _integRecarregaDeps(${i})" style="cursor:pointer;width:150px">${_optsEmpresa(emp)}</select></td>
+      <td><input class="f-inp" type="number" value="${c.id_tipo_saida??''}" oninput="_integCampo(${i},'id_tipo_saida',this.value)" placeholder="cód" title="Operação/tipo de saída (ERP)" style="width:66px" /></td>
+      <td><select class="f-inp" id="integ-vend-${i}" onchange="_integCampo(${i},'id_vendedor',this.value)" style="cursor:pointer;width:190px">${_optsVend(emp, c.id_vendedor)}</select></td>
+      <td><input class="f-inp" type="number" value="${c.id_condpag??''}" oninput="_integCampo(${i},'id_condpag',this.value)" placeholder="cód" title="Cond. pagamento (ERP)" style="width:66px" /></td>
+      <td><select class="f-inp" id="integ-centro-${i}" onchange="_integCampo(${i},'id_centro_estoque',this.value)" style="cursor:pointer;width:180px">${_optsCentro(emp, c.id_centro_estoque)}</select></td>
+      <td style="text-align:center"><input type="checkbox" ${c.ativo!==false?'checked':''} onchange="_integCampo(${i},'ativo',this.checked)" style="width:18px;height:18px;cursor:pointer;accent-color:var(--blue)" /></td>
+      <td><button onclick="integSalvarCanal(${i})" class="btn-p">Salvar</button></td>
     </tr>`;
   }).join('');
-  box.innerHTML = `<table style="width:100%;border-collapse:collapse;min-width:900px">
+  box.innerHTML = `<div class="tscroll"><table class="dtable" style="min-width:1020px">
     <thead><tr>
-      <th style="${th}">Canal (loja Bling)</th><th style="${th}">Empresa</th>
-      <th style="${th}">Operação</th><th style="${th}">Vendedor</th><th style="${th}">Cond. Pagto</th>
-      <th style="${th}">Centro estoque</th><th style="${th};text-align:center">Ativo</th><th style="${th}"></th>
-    </tr></thead><tbody>${rows}</tbody></table>
-    <div style="margin-top:10px;font-size:11px;color:var(--muted)">💡 Cada <b>loja</b> do Bling é um canal (ML normal, ML Full, Shopee, site…). <b>Operação</b> e <b>Cond. Pagto</b> ainda não vêm do Firebird — informe o código do ERP. Vendedor ML Bononi = <b>79830</b> (normal) / <b>79831</b> (Full).</div>`;
+      <th>Canal (loja Bling)</th><th>Status</th><th>Empresa</th>
+      <th>Operação</th><th>Vendedor</th><th>Cond. Pagto</th>
+      <th>Centro estoque</th><th style="text-align:center">Ativo</th><th></th>
+    </tr></thead><tbody>${rows}</tbody></table></div>
+    <div style="margin-top:12px;font-size:11px;color:var(--muted)">💡 Cada <b>loja</b> do Bling é um canal (ML, ML Full, Shopee, site…). <b>Operação</b> e <b>Cond. Pagto</b> são códigos do ERP. Vendedor ML Bononi = <b>79830</b> (normal) / <b>79831</b> (Full).</div>`;
+  renderIntegKpis();
 }
 
 function _integCampo(i, campo, val) {
@@ -1323,14 +1376,15 @@ async function carregarPendencias() {
 function renderPendencias() {
   const box = document.getElementById('integ-pendencias-lista');
   const arr = _integ.pendencias || [];
-  if (!arr.length) { box.innerHTML = `<div style="padding:16px 0;font-size:13px;color:var(--muted)">Nenhum produto/kit pendente. 👍 Tudo resolvido.</div>`; return; }
+  renderIntegKpis();
+  if (!arr.length) { box.innerHTML = `<div style="padding:20px 0;font-size:13px;color:var(--success,#0F9D6E);font-weight:600">✓ Nenhum produto/kit pendente. Tudo resolvido.</div>`; return; }
   box.innerHTML = arr.map((s, i) => {
     const faltaEmp = s.tipo === 'falta_na_empresa';
     const badge = faltaEmp
-      ? '<span style="background:rgba(124,58,237,.14);color:#7C3AED;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700">FALTA NA EMPRESA</span>'
+      ? '<span class="bdg bdg-violet">falta na empresa</span>'
       : s.tipo === 'kit'
-      ? '<span style="background:rgba(224,123,0,.14);color:#E07B00;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700">KIT</span>'
-      : '<span style="background:rgba(220,38,38,.12);color:var(--destructive);padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700">PRODUTO</span>';
+      ? '<span class="bdg bdg-warn">kit</span>'
+      : '<span class="bdg bdg-red">produto</span>';
     const acao = faltaEmp
       ? `<div style="font-size:12px;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
            ⚠️ Esse produto <b>existe no ERP</b>, mas não está cadastrado na <b>empresa ${s.id_empresa||'?'}</b> (${s.erro_ex||''}).<br>
@@ -1341,10 +1395,10 @@ function renderPendencias() {
            <button onclick="pendModo(${i},'kit')" id="pend-btn-kit-${i}" style="height:30px;padding:0 12px;border-radius:7px;font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--muted)">Criar kit (vários)</button>
          </div>
          <div id="pend-corpo-${i}"></div>`;
-    return `<div style="border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;background:var(--surface2)">
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+    return `<div style="border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px;background:var(--surface)">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
         ${badge}
-        <b style="font-size:14px;color:var(--text)">${s.sku_externo}</b>
+        <b class="mono" style="font-size:14px;color:var(--text)">${s.sku_externo}</b>
         <span style="font-size:12px;color:var(--muted)">${s.descricao||''}</span>
         <span style="font-size:11px;color:var(--muted)">· empresa ${s.id_empresa||'?'}</span>
         <span style="font-size:11px;color:var(--muted);margin-left:auto">${s.pedidos_travados} pedido(s) travado(s) · ex ${s.pedido_ex||'—'}</span>
@@ -1478,27 +1532,25 @@ async function carregarFaturas() {
 
 function renderFaturas() {
   const box = document.getElementById('integ-faturas-lista');
-  if (!_integ.faturas.length) { box.innerHTML = `<div style="padding:12px 0;font-size:13px;color:var(--muted)">Nenhuma fatura lançada ainda.</div>`; return; }
-  const th = 'text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:8px 10px;white-space:nowrap';
-  const td = 'padding:10px;font-size:13px;color:var(--text);border-top:1px solid var(--border);white-space:nowrap';
+  renderIntegKpis();
+  if (!_integ.faturas.length) { box.innerHTML = `<div style="padding:20px 0;font-size:13px;color:var(--muted)">Nenhuma fatura lançada ainda.</div>`; return; }
   const rows = _integ.faturas.map(f => {
-    const st = f.status === 'lancada' ? '<span style="background:rgba(15,157,110,.14);color:#0F9D6E;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700">lançada</span>'
-      : '<span style="background:var(--surface2);color:var(--muted);padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700">aberta</span>';
+    const st = f.status === 'lancada' ? '<span class="bdg bdg-ok">lançada</span>' : '<span class="bdg bdg-muted">aberta</span>';
     return `<tr>
-      <td style="${td}">${f.empresa || (f.id_empresa? 'Emp '+f.id_empresa : '—')}</td>
-      <td style="${td}">${f.transportadora || '—'}</td>
-      <td style="${td};font-weight:700">${f.num_fatura || '—'}</td>
-      <td style="${td};text-align:right;font-variant-numeric:tabular-nums">${_R(f.valor_total)}</td>
-      <td style="${td}">${_fmtD(f.vencimento)}</td>
-      <td style="${td};text-align:center">${f.qtd_ctes || 0}</td>
-      <td style="${td}">${st}</td>
-      <td style="${td}"><button onclick="abrirVincFat('${f.id}')" style="height:34px;padding:0 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--blue);font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">🔗 Vincular NFs</button></td>
+      <td>${f.empresa || (f.id_empresa? 'Emp '+f.id_empresa : '—')}</td>
+      <td>${f.transportadora || '—'}</td>
+      <td class="mono" style="font-weight:600">${f.num_fatura || '—'}</td>
+      <td class="mono" style="text-align:right">${_R(f.valor_total)}</td>
+      <td class="mono">${_fmtD(f.vencimento)}</td>
+      <td class="mono" style="text-align:center">${f.qtd_ctes || 0}</td>
+      <td>${st}</td>
+      <td><button onclick="abrirVincFat('${f.id}')" class="btn-s" style="color:var(--blue)">🔗 Vincular NFs</button></td>
     </tr>`;
   }).join('');
-  box.innerHTML = `<table style="width:100%;border-collapse:collapse;min-width:820px">
-    <thead><tr><th style="${th}">Empresa</th><th style="${th}">Transportadora</th><th style="${th}">Nº Fatura</th>
-      <th style="${th};text-align:right">Valor</th><th style="${th}">Vencimento</th><th style="${th};text-align:center">CTes</th>
-      <th style="${th}">Status</th><th style="${th}"></th></tr></thead><tbody>${rows}</tbody></table>`;
+  box.innerHTML = `<div class="tscroll"><table class="dtable" style="min-width:840px">
+    <thead><tr><th>Empresa</th><th>Transportadora</th><th>Nº Fatura</th>
+      <th style="text-align:right">Valor</th><th>Vencimento</th><th style="text-align:center">CTes</th>
+      <th>Status</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 async function integSalvarFatura() {
