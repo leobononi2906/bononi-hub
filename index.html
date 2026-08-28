@@ -692,9 +692,12 @@ body::before {
               <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">Empresa (pagador)</label>
               <select id="fat-empresa" style="width:100%;height:40px;padding:0 10px;border:1px solid var(--border);border-radius:10px;background:var(--input-bg);font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text);cursor:pointer"></select>
             </div>
-            <div>
-              <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">Transportadora</label>
-              <input id="fat-transp" type="text" placeholder="AGEX, Braspress…" style="width:100%;height:40px;padding:0 12px;border:1px solid var(--border);border-radius:10px;background:var(--input-bg);font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text)" />
+            <div style="position:relative;min-width:230px">
+              <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">Transportadora (fornecedor do ERP)</label>
+              <input id="fat-transp" type="text" autocomplete="off" placeholder="buscar por nome ou CNPJ…" oninput="buscarFornecedor(this.value)" onfocus="buscarFornecedor(this.value)" style="width:100%;height:40px;padding:0 12px;border:1px solid var(--border);border-radius:10px;background:var(--input-bg);font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text)" />
+              <input type="hidden" id="fat-forn-id" />
+              <div id="fat-forn-sel" style="font-size:11px;color:#0F9D6E;font-weight:600;margin-top:4px;display:none"></div>
+              <div id="fat-forn-res" style="display:none;position:absolute;z-index:40;top:66px;left:0;right:0;max-height:230px;overflow-y:auto;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 28px rgba(15,29,53,.16)"></div>
             </div>
             <div>
               <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">Nº da fatura</label>
@@ -1540,7 +1543,7 @@ function renderFaturas() {
     const st = f.status === 'lancada' ? '<span class="bdg bdg-ok">lançada</span>' : '<span class="bdg bdg-muted">aberta</span>';
     return `<tr>
       <td>${f.empresa || (f.id_empresa? 'Emp '+f.id_empresa : '—')}</td>
-      <td>${f.transportadora || '—'}</td>
+      <td>${f.transportadora || '—'}${f.cnpj_transportadora?`<br><span class="mono" style="font-size:10.5px;color:var(--muted)">${f.cnpj_transportadora}</span>`:''}</td>
       <td class="mono" style="font-weight:600">${f.num_fatura || '—'}</td>
       <td class="mono" style="text-align:right">${_R(f.valor_total)}</td>
       <td class="mono">${_fmtD(f.vencimento)}</td>
@@ -1555,24 +1558,59 @@ function renderFaturas() {
       <th>Status</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
+// ── Busca de transportadora = fornecedor do ERP (vw_fb_contatos) ──
+let _fornSel = null;   // { id, nome, cnpj }
+let _fornTimer = null;
+function buscarFornecedor(q) {
+  q = (q || '').trim();
+  // digitou algo novo → invalida a seleção anterior
+  if (_fornSel && q !== _fornSel.nome) { _fornSel = null; document.getElementById('fat-forn-id').value=''; document.getElementById('fat-forn-sel').style.display='none'; }
+  const res = document.getElementById('fat-forn-res');
+  if (q.length < 2) { res.style.display='none'; return; }
+  clearTimeout(_fornTimer);
+  _fornTimer = setTimeout(async () => {
+    try {
+      const enc = encodeURIComponent(`*${q}*`);
+      const rows = await _sbGet(`vw_fb_contatos?select=id_contato,nome_contato,cnpj,situacao&or=(nome_contato.ilike.${enc},cnpj.ilike.${enc})&situacao=eq.A&order=nome_contato.asc&limit=12`);
+      if (!rows || !rows.length) { res.innerHTML = `<div style="padding:10px 12px;font-size:12px;color:var(--muted)">Nenhum fornecedor encontrado. <b>Cadastre a transportadora no ERP</b> antes de lançar.</div>`; res.style.display='block'; return; }
+      res.innerHTML = rows.map(r => `<div onclick='pickFornecedor(${r.id_contato}, ${JSON.stringify(r.nome_contato)}, ${JSON.stringify(r.cnpj||"")})' style="padding:8px 12px;border-bottom:1px solid var(--border);cursor:pointer;font-size:12px">
+        <div style="font-weight:600;color:var(--text)">${r.nome_contato}</div>
+        <div class="mono" style="font-size:11px;color:var(--muted)">${r.cnpj || 'sem CNPJ'}</div>
+      </div>`).join('');
+      res.style.display='block';
+    } catch(e){ res.innerHTML = `<div style="padding:10px 12px;font-size:12px;color:var(--destructive)">${e.message}</div>`; res.style.display='block'; }
+  }, 250);
+}
+function pickFornecedor(id, nome, cnpj) {
+  _fornSel = { id, nome, cnpj };
+  document.getElementById('fat-transp').value = nome;
+  document.getElementById('fat-forn-id').value = id;
+  const sel = document.getElementById('fat-forn-sel');
+  sel.innerHTML = `✓ ${cnpj || 'sem CNPJ'} · fornecedor #${id}`;
+  sel.style.display = 'block';
+  document.getElementById('fat-forn-res').style.display = 'none';
+}
+
 async function integSalvarFatura() {
   const idEmp = document.getElementById('fat-empresa').value;
-  const transp = document.getElementById('fat-transp').value.trim();
   const num = document.getElementById('fat-num').value.trim();
   const valor = document.getElementById('fat-valor').value;
   const venc = document.getElementById('fat-venc').value;
   const msg = document.getElementById('fat-form-msg');
   if (!idEmp || !num) { msg.style.color = 'var(--destructive)'; msg.textContent = 'Empresa e nº da fatura são obrigatórios.'; return; }
+  if (!_fornSel) { msg.style.color = 'var(--destructive)'; msg.textContent = 'Escolha a transportadora na lista (fornecedor cadastrado no ERP). A conta a pagar amarra nele.'; return; }
   const empNome = (_integ.empresas.find(e => e.id === Number(idEmp)) || {}).nome || null;
   const payload = {
-    id_empresa: Number(idEmp), empresa: empNome, transportadora: transp || null,
+    id_empresa: Number(idEmp), empresa: empNome,
+    transportadora: _fornSel.nome, cnpj_transportadora: _fornSel.cnpj || null, id_fornecedor: _fornSel.id,
     num_fatura: num, valor_total: valor ? Number(valor) : null,
     vencimento: venc || null, origem: 'hub-manual', status: 'aberta',
   };
   try {
     await _sbWrite('frt_faturas?on_conflict=transportadora,num_fatura', 'POST', payload, 'return=representation,resolution=merge-duplicates');
-    msg.style.color = '#0F9D6E'; msg.textContent = '✓ Fatura salva. Agora clique em "Vincular NFs" na lista abaixo.';
+    msg.style.color = '#0F9D6E'; msg.textContent = '✓ Fatura salva. Se tiver CTe, vincule as NFs abaixo; senão já fica pronta pra virar conta a pagar.';
     document.getElementById('fat-num').value = ''; document.getElementById('fat-valor').value = '';
+    document.getElementById('fat-transp').value = ''; document.getElementById('fat-forn-id').value=''; document.getElementById('fat-forn-sel').style.display='none'; _fornSel=null;
     await carregarFaturas();
   } catch (e) { msg.style.color = 'var(--destructive)'; msg.textContent = 'Erro: ' + e.message; }
 }
