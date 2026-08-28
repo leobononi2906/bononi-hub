@@ -477,6 +477,7 @@ body::before {
       <button class="btn-admin" id="btn-admin" onclick="toggleAdmin()" style="display:none">⚙️ Usuários</button>
       <button class="btn-admin" id="btn-func" onclick="abrirFuncionarios()" style="display:none">👥 Funcionários</button>
       <button class="btn-admin" id="btn-config" onclick="toggleConfig()" style="display:none">🛠️ Configuração</button>
+      <button class="btn-admin" id="btn-integrador" onclick="toggleIntegrador()" style="display:none">🔌 Integrador</button>
       <button class="btn-sair" onclick="abrirModalSenha()" style="background:rgba(99,102,241,0.1);border-color:rgba(99,102,241,0.25);color:#a5b4fc">🔑 Senha</button>
       <button class="btn-sair" onclick="sair()">Sair</button>
     </div>
@@ -593,12 +594,14 @@ body::before {
         </div>
         <div id="umbler-usuarios-lista" style="padding:12px 18px 16px">Carregando usuários…</div>
       </div>
+    </div>
 
-      <!-- ══════════════ SEÇÃO 3: INTEGRADOR (receber dados + frete) ══════════════ -->
-      <div style="display:flex;align-items:center;gap:10px;margin:28px 0 10px">
-        <span style="font-size:16px">🔌</span>
-        <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--text)">Integrador</div>
-        <span style="font-size:11px;color:var(--muted)">recebimento de pedidos (Bling→ERP) e lançamento de frete no contas a pagar</span>
+    <!-- ══════════════ PAINEL INTEGRADOR (aba própria) ══════════════ -->
+    <div id="integrador-panel" style="display:none;margin-top:40px">
+      <div style="margin-bottom:20px">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--blue);margin-bottom:4px">Integrador</div>
+        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800">Bling → ERP &amp; Frete</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:4px">Recebe os pedidos do Bling (canais, produtos/kits) e lança o frete no contas a pagar.</div>
       </div>
       <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
         <button id="integ-sub-btn-canais" onclick="setIntegSub('canais')" style="height:34px;padding:0 14px;border-radius:8px;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">🧭 Canais &amp; de-para</button>
@@ -933,7 +936,7 @@ function mostrarPortal(usuario) {
     `${saudacao()}, <span id="greeting-nome" style="color:var(--blue)">${nome.split(' ')[0]}</span> 👋`;
 
   renderApps(usuario);
-  if (usuario.admin) { document.getElementById('btn-admin').style.display = 'block'; document.getElementById('btn-func').style.display = 'block'; document.getElementById('btn-config').style.display = 'block'; }
+  if (usuario.admin) { document.getElementById('btn-admin').style.display = 'block'; document.getElementById('btn-func').style.display = 'block'; document.getElementById('btn-config').style.display = 'block'; document.getElementById('btn-integrador').style.display = 'block'; }
   verificarSync();
   setInterval(verificarSync, 5 * 60 * 1000); // re-verifica a cada 5 min
   if (usuario.admin) { checarSaudeUmbler(); setInterval(checarSaudeUmbler, 5 * 60 * 1000); }
@@ -1044,6 +1047,7 @@ function toggleAdmin() {
 
   if (panel.style.display === 'none') {
     fecharConfig();
+    fecharIntegrador();
     panel.style.display = 'block';
     appsSection.style.display = 'none';
     appsGrid.style.display = 'none';
@@ -1067,6 +1071,47 @@ function fecharConfig() {
     document.getElementById('btn-config').textContent = '🛠️ Configuração';
   }
 }
+function fecharIntegrador() {
+  const panel = document.getElementById('integrador-panel');
+  if (panel && panel.style.display !== 'none') {
+    panel.style.display = 'none';
+    document.getElementById('btn-integrador').textContent = '🔌 Integrador';
+  }
+}
+function fecharAdmin() {
+  const admin = document.getElementById('admin-panel');
+  if (admin && admin.style.display !== 'none') {
+    admin.style.display = 'none';
+    document.getElementById('btn-admin').textContent = '⚙️ Usuários';
+  }
+}
+
+// ── INTEGRADOR (aba própria) ──
+function toggleIntegrador() {
+  const panel = document.getElementById('integrador-panel');
+  const appsSection = document.querySelector('.portal-greeting');
+  const appsGrid = document.getElementById('apps-grid');
+  const sectionLabel = document.querySelector('.section-label');
+  const btn = document.getElementById('btn-integrador');
+
+  if (panel.style.display === 'none') {
+    fecharConfig();
+    fecharAdmin();
+    panel.style.display = 'block';
+    appsSection.style.display = 'none';
+    appsGrid.style.display = 'none';
+    sectionLabel.style.display = 'none';
+    btn.textContent = '← Voltar';
+    setIntegSub('canais');
+    carregarIntegrador();
+  } else {
+    panel.style.display = 'none';
+    appsSection.style.display = '';
+    appsGrid.style.display = '';
+    sectionLabel.style.display = '';
+    btn.textContent = '🔌 Integrador';
+  }
+}
 
 function toggleConfig() {
   const panel = document.getElementById('config-panel');
@@ -1076,12 +1121,8 @@ function toggleConfig() {
   const btn = document.getElementById('btn-config');
 
   if (panel.style.display === 'none') {
-    // fecha o painel de usuários se estiver aberto
-    const admin = document.getElementById('admin-panel');
-    if (admin.style.display !== 'none') {
-      admin.style.display = 'none';
-      document.getElementById('btn-admin').textContent = '⚙️ Usuários';
-    }
+    fecharAdmin();
+    fecharIntegrador();
     panel.style.display = 'block';
     appsSection.style.display = 'none';
     appsGrid.style.display = 'none';
@@ -1090,8 +1131,6 @@ function toggleConfig() {
     carregarSaudeSync();
     setUmblerSub('canais');   // inicializa a subnav Umbler (Canais ativo)
     carregarCanaisUmbler();
-    setIntegSub('canais');    // subnav do Integrador
-    carregarIntegrador();
   } else {
     panel.style.display = 'none';
     appsSection.style.display = '';
