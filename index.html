@@ -2119,13 +2119,18 @@ const _GRUPOS = {
   representante: { label: '🏬 Representantes',   vazio: 'Nenhum representante (Comercial Stonni).' },
   autorizada:    { label: '🔧 Rede Autorizada',  vazio: 'Nenhum usuário da rede autorizada.' },
 };
+// Módulos de "back-office" que SÓ o pessoal interno recebe. Um parceiro (rede
+// autorizada / representante) nunca tem esses — é o que separa staff de externo.
+const _MODULOS_BACKOFFICE = ['financeiro','compras','cobranca','ecommerce','loja','operacoes','expedicao','varejo_admin'];
 function classificarUsuario(u) {
   const mods = Array.isArray(u.modulos) ? u.modulos : [];
-  if (u.admin) return 'interno';
-  if (mods.some(m => !_MODULOS_EXTERNOS.includes(m))) return 'interno'; // tem algum módulo interno
-  if (mods.includes('stonni')) return 'representante';
-  if (mods.includes('rede-autorizada')) return 'autorizada';
-  return 'interno'; // sem acesso ainda = staff interno
+  const email = (u.email || '').toLowerCase();
+  if (u.admin) return 'interno';                                   // admin global = staff
+  if (mods.some(m => _MODULOS_BACKOFFICE.includes(m))) return 'interno'; // módulo de back-office = staff
+  if (email.includes('bononi')) return 'interno';                  // e-mail interno (vendasbononi.*, *@bononiacessorios.com.br)
+  if (mods.includes('rede-autorizada')) return 'autorizada';       // parceiro da rede autorizada
+  if (mods.includes('stonni')) return 'representante';             // representante (Comercial Stonni)
+  return 'autorizada';                                             // externo sem e-mail Bononi/back-office = rede autorizada (inclui sem acesso ainda)
 }
 
 function selecionarGrupo(g) { window._grupoAtual = g; renderGruposChips(); filtrarUsuarios(); }
