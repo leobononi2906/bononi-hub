@@ -403,6 +403,10 @@ body::before {
 .kpi .l { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-top:7px; }
 .f-inp { height:38px; padding:0 10px; border:1px solid var(--border); border-radius:9px; background:var(--input-bg); font-size:13px; font-family:'DM Sans',sans-serif; color:var(--text); outline:none; }
 .f-inp:focus { border-color:var(--blue); }
+.fat-grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:12px; align-items:end; }
+.fat-grid > .c2 { grid-column:span 2; } .fat-grid > .c4 { grid-column:span 4; }
+@media (max-width:760px){ .fat-grid { grid-template-columns:1fr 1fr; } .fat-grid > .c2,.fat-grid > .c4 { grid-column:span 2; } }
+@media (max-width:460px){ .fat-grid { grid-template-columns:1fr; } .fat-grid > * { grid-column:span 1 !important; } }
 .btn-p { display:inline-flex; align-items:center; justify-content:center; height:36px; padding:0 14px; background:linear-gradient(135deg,var(--blue),#0077CC); border:none; border-radius:9px; color:#fff; font-size:12px; font-weight:700; font-family:'DM Sans',sans-serif; cursor:pointer; }
 .btn-s { display:inline-flex; align-items:center; justify-content:center; height:36px; padding:0 12px; background:var(--surface2); border:1px solid var(--border); border-radius:9px; color:var(--muted); font-size:12px; font-weight:600; font-family:'DM Sans',sans-serif; cursor:pointer; }
 .btn-ok { background:linear-gradient(135deg,#0F9D6E,#0AA06E); color:#fff; border:none; }
@@ -686,9 +690,32 @@ body::before {
               <div style="font-size:11px;color:var(--muted)">SKU que travou o pedido. <b>Aponte um produto</b> (SKU = 1 produto do ERP) ou <b>crie o kit</b> (vários componentes). Depois clique em Reprocessar.</div>
             </div>
           </div>
-          <div style="display:flex;gap:8px">
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button onclick="toggleKitNovo()" id="btn-kit-novo" style="height:32px;padding:0 12px;background:var(--blue);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">➕ Criar kit</button>
             <button onclick="reprocessarPendentes(this)" style="height:32px;padding:0 12px;background:linear-gradient(135deg,#0F9D6E,#0AA06E);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">↻ Reprocessar pedidos</button>
             <button onclick="carregarPendencias()" style="height:32px;padding:0 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer">↻ Atualizar</button>
+          </div>
+        </div>
+        <!-- criar kit avulso (mesmo sem pendência) -->
+        <div id="integ-kit-novo" style="display:none;margin:12px 18px 0;border:1px solid var(--blue);border-radius:12px;background:var(--blue-pale,#E8F4FD);padding:14px 16px">
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px">Criar kit (SKU do Bling → vários produtos do ERP)</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Cadastre a composição de um kit <b>antes</b> dele travar um pedido. O SKU do Bling vira os produtos do ERP na hora de gravar a venda.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+            <div style="flex:1;min-width:160px">
+              <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:4px">SKU do Bling</label>
+              <input id="kitn-sku" oninput="_kitNovo.sku=this.value" placeholder="ex. K14521" style="width:100%;height:36px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text)" />
+            </div>
+            <div style="flex:2;min-width:200px">
+              <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:4px">Nome (opcional)</label>
+              <input id="kitn-nome" oninput="_kitNovo.nome=this.value" placeholder="descrição do kit" style="width:100%;height:36px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text)" />
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Componentes (produto do ERP + quantidade):</div>
+          <div id="kitn-comps"></div>
+          <div style="margin-top:8px">
+            <button onclick="kitnAddComp()" style="height:30px;padding:0 12px;background:var(--surface);border:1px dashed var(--border);border-radius:8px;color:var(--blue);font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer">+ componente</button>
+            <button onclick="salvarKitNovo(this)" style="height:32px;padding:0 14px;margin-left:8px;background:linear-gradient(135deg,var(--blue),#0284C7);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">Salvar kit</button>
+            <span id="kitn-msg" style="font-size:12px;margin-left:10px"></span>
           </div>
         </div>
         <div id="integ-pendencias-lista" style="padding:12px 18px 16px">Carregando…</div>
@@ -705,19 +732,19 @@ body::before {
               <div style="font-size:11px;color:var(--muted)">Cadastre a fatura (empresa, nº, valor, vencimento). Depois escolha <b>em quais NFs/CTes</b> o frete será rateado — vira 1 conta a pagar no ERP.</div>
             </div>
           </div>
-          <div style="padding:16px 18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;align-items:end">
-            <div>
+          <div class="fat-grid" style="padding:16px 18px">
+            <div class="c2">
               <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">Empresa (pagador)</label>
               <select id="fat-empresa" style="width:100%;height:40px;padding:0 10px;border:1px solid var(--border);border-radius:10px;background:var(--input-bg);font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text);cursor:pointer"></select>
             </div>
-            <div style="position:relative;min-width:230px">
+            <div class="c4" style="position:relative">
               <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">Transportadora (fornecedor do ERP)</label>
               <input id="fat-transp" type="text" autocomplete="off" placeholder="buscar por nome ou CNPJ…" oninput="buscarFornecedor(this.value)" onfocus="buscarFornecedor(this.value)" style="width:100%;height:40px;padding:0 12px;border:1px solid var(--border);border-radius:10px;background:var(--input-bg);font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text)" />
               <input type="hidden" id="fat-forn-id" />
               <div id="fat-forn-sel" style="font-size:11px;color:#0F9D6E;font-weight:600;margin-top:4px;display:none"></div>
               <div id="fat-forn-res" style="display:none;position:absolute;z-index:40;top:66px;left:0;right:0;max-height:230px;overflow-y:auto;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 28px rgba(15,29,53,.16)"></div>
             </div>
-            <div>
+            <div class="c2">
               <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">Nº da fatura</label>
               <input id="fat-num" type="text" placeholder="0248444-7" style="width:100%;height:40px;padding:0 12px;border:1px solid var(--border);border-radius:10px;background:var(--input-bg);font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text)" />
             </div>
@@ -729,7 +756,7 @@ body::before {
               <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">Vencimento</label>
               <input id="fat-venc" type="date" style="width:100%;height:40px;padding:0 12px;border:1px solid var(--border);border-radius:10px;background:var(--input-bg);font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text)" />
             </div>
-            <div>
+            <div class="c2">
               <button onclick="integSalvarFatura()" style="width:100%;height:40px;padding:0 14px;background:linear-gradient(135deg,var(--blue),#0284C7);border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">Salvar fatura</button>
             </div>
           </div>
@@ -1621,6 +1648,59 @@ async function salvarKit(i){
       'return=minimal,resolution=merge-duplicates');
     document.getElementById(`pend-corpo-${i}`).innerHTML = `<div style="font-size:13px;color:#0F9D6E;font-weight:600">✓ Kit ${s.sku_externo} criado (${comps.length} componente(s)). Clique em “Reprocessar pedidos”.</div>`;
   }catch(e){ alert('Erro ao salvar kit: ' + e.message); }
+}
+
+// ── Criar kit avulso (independente de pendência) ──
+let _kitNovo = { sku:'', nome:'', comps:[{qtd:1}] };
+function toggleKitNovo(){
+  const el = document.getElementById('integ-kit-novo');
+  const open = el.style.display === 'none';
+  el.style.display = open ? 'block' : 'none';
+  document.getElementById('btn-kit-novo').textContent = open ? '✕ Fechar' : '➕ Criar kit';
+  if (open && !document.getElementById('kitn-comps').innerHTML) renderKitnComps();
+}
+function renderKitnComps(){
+  const box = document.getElementById('kitn-comps');
+  const inp = 'height:34px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);font-size:13px;font-family:\'DM Sans\',sans-serif;color:var(--text)';
+  box.innerHTML = _kitNovo.comps.map((c,j)=>`
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
+      <input value="${c._busca||''}" oninput="kitnBusca(${j},this.value)" placeholder="buscar produto do ERP (nome/referência)…" style="${inp};flex:1;min-width:180px" />
+      <input type="number" value="${c.id_produto||''}" oninput="_kitNovo.comps[${j}].id_produto=Number(this.value)" placeholder="id" style="${inp};width:90px" />
+      <input type="number" value="${c.qtd||1}" oninput="_kitNovo.comps[${j}].qtd=Number(this.value)" placeholder="qtd" style="${inp};width:70px" />
+      <button onclick="kitnDelComp(${j})" style="height:34px;width:34px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--muted);cursor:pointer">✕</button>
+      <div id="kitn-res-${j}" style="font-size:11px;flex-basis:100%"></div>
+    </div>`).join('');
+}
+function kitnAddComp(){ _kitNovo.comps.push({qtd:1}); renderKitnComps(); }
+function kitnDelComp(j){ _kitNovo.comps.splice(j,1); if(!_kitNovo.comps.length)_kitNovo.comps.push({qtd:1}); renderKitnComps(); }
+async function kitnBusca(j,q){
+  _kitNovo.comps[j]._busca = q;
+  const res = document.getElementById(`kitn-res-${j}`);
+  if ((q||'').trim().length<2){ res.innerHTML=''; return; }
+  try{
+    const enc = encodeURIComponent(`*${q.trim()}*`);
+    const rows = await _sbGet(`vw_fb_produtos_compras?select=id_produto,referencia,nome&or=(nome.ilike.${enc},referencia.ilike.${enc})&limit=6`);
+    res.innerHTML = (rows||[]).map(r=>`<span onclick="kitnPick(${j},${r.id_produto})" title="${(r.nome||'').replace(/"/g,'')}" style="display:inline-block;margin:2px;padding:2px 6px;border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--blue)">${r.id_produto}·${r.referencia||''} — ${(r.nome||'').slice(0,28)}</span>`).join('') || `<span style="color:var(--muted)">nada encontrado</span>`;
+  }catch(_){}
+}
+function kitnPick(j,id){ _kitNovo.comps[j].id_produto=id; renderKitnComps(); }
+async function salvarKitNovo(btn){
+  const msg = document.getElementById('kitn-msg');
+  const sku = (_kitNovo.sku||'').trim();
+  if (!sku){ msg.style.color='var(--destructive)'; msg.textContent='Informe o SKU do Bling.'; return; }
+  const comps = (_kitNovo.comps||[]).filter(c=>c.id_produto).map(c=>({ id_produto:Number(c.id_produto), qtd:Number(c.qtd||1) }));
+  if (!comps.length){ msg.style.color='var(--destructive)'; msg.textContent='Adicione ao menos 1 componente com produto do ERP.'; return; }
+  if (btn){ btn.disabled=true; btn.textContent='⏳ Salvando…'; }
+  try{
+    await _sbWrite('geral_bling_composicoes?on_conflict=sku_bling', 'POST',
+      { sku_bling: sku, nome_bling: _kitNovo.nome||null, itens: comps, ativo:true, status:'validado', validado_em:new Date().toISOString(), validado_por:'hub' },
+      'return=minimal,resolution=merge-duplicates');
+    msg.style.color='#0F9D6E'; msg.textContent=`✓ Kit ${sku} salvo (${comps.length} componente(s)).`;
+    _kitNovo = { sku:'', nome:'', comps:[{qtd:1}] };
+    document.getElementById('kitn-sku').value=''; document.getElementById('kitn-nome').value=''; renderKitnComps();
+    renderIntegKpis();
+  }catch(e){ msg.style.color='var(--destructive)'; msg.textContent='Erro: '+e.message; }
+  finally { if (btn){ btn.disabled=false; btn.textContent='Salvar kit'; } }
 }
 
 async function reprocessarPendentes(btn) {
