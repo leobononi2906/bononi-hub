@@ -791,6 +791,9 @@ body::before {
       </div>
       <button onclick="fecharVincFat()" style="background:var(--surface2);border:none;border-radius:8px;width:32px;height:32px;cursor:pointer;color:var(--muted);font-size:16px">✕</button>
     </div>
+    <div style="padding:12px 24px 0">
+      <input id="integ-vinc-busca" oninput="_vincFiltrar(this.value)" autocomplete="off" placeholder="🔍 buscar por CTe, NF ou destinatário…" style="width:100%;height:38px;padding:0 12px;border:1px solid var(--border);border-radius:10px;background:var(--input-bg);font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text)" />
+    </div>
     <div id="integ-vinc-body" style="padding:12px 24px;overflow-y:auto;flex:1">Carregando CTes…</div>
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 24px;border-top:1px solid var(--border)">
       <div id="integ-vinc-resumo" style="font-size:13px;color:var(--muted)"></div>
@@ -1253,6 +1256,8 @@ let _integ = { cfg: [], empresas: [], centrosPorEmp: {}, vend: [], faturas: [] }
 let _integSub = 'canais';
 let _fatVincAtual = null;   // fatura sendo vinculada
 let _fatVincCtes = [];      // CTes candidatos no modal
+let _vincSel = new Set();    // ids de CTe marcados (persiste ao filtrar)
+let _vincBusca = '';         // termo de busca no modal
 
 function setIntegSub(sub) {
   _integSub = sub;
@@ -1838,6 +1843,8 @@ async function abrirVincFat(idFat) {
   document.getElementById('integ-vinc-overlay').style.display = 'flex';
   document.getElementById('integ-vinc-body').innerHTML = 'Carregando CTes…';
   document.getElementById('integ-vinc-resumo').textContent = '';
+  _vincBusca = ''; _vincSel = new Set();
+  const bcamp = document.getElementById('integ-vinc-busca'); if (bcamp) bcamp.value = '';
   try {
     // CTes candidatos: já vinculados a esta fatura OU ainda não lançados. Traz recentes.
     const q = `frt_conhecimentos?select=id,num_cte,data_emissao,nome_destinatario,notas_fiscais,valor_frete_cte,valor_frete_nf,nome_transportadora,frete_lancado,id_fatura,num_fatura` +
@@ -1849,22 +1856,37 @@ async function abrirVincFat(idFat) {
       const e = _integEmpresaCte(c);
       return e == null || e === f.id_empresa;                  // mesma empresa (ou indefinida)
     });
+    // já vinculados a esta fatura começam marcados
+    _fatVincCtes.forEach(c => { if (String(c.id_fatura) === String(f.id)) _vincSel.add(String(c.id)); });
     renderVincFat();
   } catch (e) {
     document.getElementById('integ-vinc-body').innerHTML = `<div style="color:var(--destructive);font-size:13px">Erro: ${e.message}</div>`;
   }
 }
 
+function _vincMatch(c) {
+  const q = _vincBusca.trim().toLowerCase();
+  if (!q) return true;
+  const alvo = [c.num_cte, _integNfsTxt(c), c.nome_destinatario, c.num_fatura].map(x => String(x||'').toLowerCase()).join(' ');
+  return alvo.includes(q);
+}
+function _vincFiltrar(v) { _vincBusca = v || ''; renderVincFat(); }
+
 function renderVincFat() {
   const body = document.getElementById('integ-vinc-body');
   if (!_fatVincCtes.length) { body.innerHTML = `<div style="padding:16px 0;font-size:13px;color:var(--muted)">Nenhum CTe candidato para esta empresa. Confira se os CTes já foram capturados na auditoria de frete.</div>`; return; }
+  const visiveis = _fatVincCtes.filter(_vincMatch);
   const th = 'text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:8px;white-space:nowrap';
   const td = 'padding:8px;font-size:12px;color:var(--text);border-top:1px solid var(--border)';
-  const rows = _fatVincCtes.map(c => {
-    const jaVinc = String(c.id_fatura) === String(_fatVincAtual.id);
+  if (!visiveis.length) {
+    body.innerHTML = `<div style="padding:16px 0;font-size:13px;color:var(--muted)">Nada encontrado para “${_vincBusca}”. ${_vincSel.size?`(${_vincSel.size} ainda marcado[s] fora do filtro)`:''}</div>`;
+    _vincResumo(); return;
+  }
+  const rows = visiveis.map(c => {
+    const id = String(c.id);
     const frete = c.valor_frete_cte || c.valor_frete_nf || 0;
     return `<tr>
-      <td style="${td};text-align:center"><input type="checkbox" class="vinc-ck" data-id="${c.id}" data-frete="${frete}" ${jaVinc?'checked':''} onchange="_vincResumo()" style="width:17px;height:17px;cursor:pointer" /></td>
+      <td style="${td};text-align:center"><input type="checkbox" data-id="${id}" ${_vincSel.has(id)?'checked':''} onchange="_vincToggle('${id}',this.checked)" style="width:17px;height:17px;cursor:pointer" /></td>
       <td style="${td};font-weight:600">${c.num_cte||'—'}</td>
       <td style="${td}">${_fmtD(c.data_emissao)}</td>
       <td style="${td}">NF ${_integNfsTxt(c)}</td>
@@ -1872,25 +1894,28 @@ function renderVincFat() {
       <td style="${td};text-align:right;font-variant-numeric:tabular-nums">${_R(frete)}</td>
     </tr>`;
   }).join('');
-  body.innerHTML = `<table style="width:100%;border-collapse:collapse">
+  const aviso = visiveis.length < _fatVincCtes.length ? `<div style="font-size:11px;color:var(--muted);padding:0 0 8px">mostrando ${visiveis.length} de ${_fatVincCtes.length} CTe(s)</div>` : '';
+  body.innerHTML = aviso + `<table style="width:100%;border-collapse:collapse">
     <thead><tr><th style="${th}"></th><th style="${th}">CTe</th><th style="${th}">Data</th><th style="${th}">NF</th><th style="${th}">Destinatário</th><th style="${th};text-align:right">Frete</th></tr></thead>
     <tbody>${rows}</tbody></table>`;
   _vincResumo();
 }
 
+function _vincToggle(id, on) { if (on) _vincSel.add(String(id)); else _vincSel.delete(String(id)); _vincResumo(); }
+
 function _vincResumo() {
-  const cks = [...document.querySelectorAll('.vinc-ck:checked')];
-  const soma = cks.reduce((s, ck) => s + (Number(ck.dataset.frete)||0), 0);
+  const soma = _fatVincCtes.filter(c => _vincSel.has(String(c.id)))
+    .reduce((s, c) => s + (Number(c.valor_frete_cte || c.valor_frete_nf || 0)), 0);
   const alvo = Number(_fatVincAtual?.valor_total)||0;
   const dif = soma - alvo;
   const cor = Math.abs(dif) < 0.5 ? '#0F9D6E' : (Math.abs(dif) < alvo*0.05 ? '#E07B00' : 'var(--destructive)');
   document.getElementById('integ-vinc-resumo').innerHTML =
-    `<b>${cks.length}</b> NF(s) · soma frete <b style="font-variant-numeric:tabular-nums">${_R(soma)}</b> · fatura ${_R(alvo)} · <span style="color:${cor};font-weight:700">dif ${_R(dif)}</span>`;
+    `<b>${_vincSel.size}</b> NF(s) · soma frete <b style="font-variant-numeric:tabular-nums">${_R(soma)}</b> · fatura ${_R(alvo)} · <span style="color:${cor};font-weight:700">dif ${_R(dif)}</span>`;
 }
 
 async function salvarVincFat() {
   const f = _fatVincAtual; if (!f) return;
-  const marcados = [...document.querySelectorAll('.vinc-ck:checked')].map(ck => ck.dataset.id);
+  const marcados = [..._vincSel];
   const todos = _fatVincCtes.map(c => String(c.id));
   const meta = sb.auth.getUser ? (await sb.auth.getUser()).data?.user?.user_metadata : null;
   const quem = meta?.nome || 'hub';
@@ -1920,7 +1945,7 @@ async function salvarVincFat() {
   } catch (e) { alert('Erro ao salvar vínculo: ' + e.message); }
 }
 
-function fecharVincFat() { document.getElementById('integ-vinc-overlay').style.display = 'none'; _fatVincAtual = null; _fatVincCtes = []; }
+function fecharVincFat() { document.getElementById('integ-vinc-overlay').style.display = 'none'; _fatVincAtual = null; _fatVincCtes = []; _vincSel = new Set(); _vincBusca = ''; }
 
 function _fmtHrAtras(dtStr) {
   if (!dtStr) return '—';
