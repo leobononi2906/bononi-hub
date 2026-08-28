@@ -1308,6 +1308,7 @@ function renderIntegCanais() {
       <td><select class="f-inp" id="integ-vend-${i}" onchange="_integCampo(${i},'id_vendedor',this.value)" style="cursor:pointer;width:190px">${_optsVend(emp, c.id_vendedor)}</select></td>
       <td><input class="f-inp" type="number" value="${c.id_condpag??''}" oninput="_integCampo(${i},'id_condpag',this.value)" placeholder="cód" title="Cond. pagamento (ERP)" style="width:66px" /></td>
       <td><select class="f-inp" id="integ-centro-${i}" onchange="_integCampo(${i},'id_centro_estoque',this.value)" style="cursor:pointer;width:180px">${_optsCentro(emp, c.id_centro_estoque)}</select></td>
+      <td style="text-align:center"><input type="checkbox" ${c.finalizar!==false?'checked':''} onchange="_integCampo(${i},'finalizar',this.checked)" title="Marcado = grava a venda já finalizada no ERP. Desmarcado = entra pendente/a conferir." style="width:18px;height:18px;cursor:pointer;accent-color:#0F9D6E" /></td>
       <td style="text-align:center"><input type="checkbox" ${c.ativo!==false?'checked':''} onchange="_integCampo(${i},'ativo',this.checked)" style="width:18px;height:18px;cursor:pointer;accent-color:var(--blue)" /></td>
       <td><button onclick="integSalvarCanal(${i})" class="btn-p">Salvar</button></td>
     </tr>`;
@@ -1316,7 +1317,7 @@ function renderIntegCanais() {
     <thead><tr>
       <th>Canal (loja Bling)</th><th>Status</th><th>Empresa</th>
       <th>Operação</th><th>Vendedor</th><th>Cond. Pagto</th>
-      <th>Centro estoque</th><th style="text-align:center">Ativo</th><th></th>
+      <th>Centro estoque</th><th style="text-align:center" title="Grava a venda já finalizada no ERP?">Finalizar</th><th style="text-align:center">Ativo</th><th></th>
     </tr></thead><tbody>${rows}</tbody></table></div>
     <div style="margin-top:12px;font-size:11px;color:var(--muted)">💡 Cada <b>loja</b> do Bling é um canal (ML, ML Full, Shopee, site…). <b>Operação</b> e <b>Cond. Pagto</b> são códigos do ERP. Vendedor ML Bononi = <b>79830</b> (normal) / <b>79831</b> (Full).</div>`;
   renderIntegKpis();
@@ -1324,7 +1325,7 @@ function renderIntegCanais() {
 
 function _integCampo(i, campo, val) {
   const c = _integ.cfg[i]; if (!c) return;
-  if (campo === 'ativo') c.ativo = val;
+  if (campo === 'ativo' || campo === 'finalizar') c[campo] = val;
   else if (['id_empresa','id_tipo_saida','id_vendedor','id_condpag','id_centro_estoque'].includes(campo))
     c[campo] = val === '' ? null : Number(val);
   else c[campo] = val;   // nome, canal, conta (texto)
@@ -1337,7 +1338,7 @@ function _integRecarregaDeps(i) {
   if (cs) cs.innerHTML = _optsCentro(c.id_empresa, c.id_centro_estoque);
 }
 function integNovoCanal() {
-  _integ.cfg.unshift({ canal:'', nome:'', conta:null, loja_id:null, id_empresa:null, id_tipo_saida:null, id_vendedor:null, id_condpag:null, id_centro_estoque:null, ativo:true, _novo:true });
+  _integ.cfg.unshift({ canal:'', nome:'', conta:null, loja_id:null, id_empresa:null, id_tipo_saida:null, id_vendedor:null, id_condpag:null, id_centro_estoque:null, finalizar:true, ativo:true, _novo:true });
   renderIntegCanais();
 }
 async function integSalvarCanal(i) {
@@ -1350,7 +1351,8 @@ async function integSalvarCanal(i) {
   const payload = {
     canal: chave, nome: c.nome || null, conta: c.conta || null, loja_id: c.loja_id ?? null,
     id_empresa: c.id_empresa, id_tipo_saida: c.id_tipo_saida, id_vendedor: c.id_vendedor,
-    id_condpag: c.id_condpag, id_centro_estoque: c.id_centro_estoque, ativo: c.ativo !== false,
+    id_condpag: c.id_condpag, id_centro_estoque: c.id_centro_estoque,
+    finalizar: c.finalizar !== false, ativo: c.ativo !== false,
   };
   try {
     await _sbWrite('integ_config_canal?on_conflict=canal', 'POST', payload, 'return=representation,resolution=merge-duplicates');
