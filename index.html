@@ -363,12 +363,16 @@ body::before {
 
 /* Responsive */
 @media (max-width: 640px) {
-  .portal-header { padding: 16px 20px; }
-  .portal-content { padding: 32px 20px; }
+  .portal-header { padding: 12px 16px; flex-wrap: wrap; gap: 10px; row-gap: 8px; }
+  .header-user { flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+  .btn-admin, .btn-sair { height: 32px; padding: 0 12px; }
+  .portal-content { padding: 28px 16px; }
   .greeting-title { font-size: 26px; }
+  .greeting-sub { font-size: 14px; }
   .apps-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
   .app-card { padding: 18px; }
   .header-logo-sub, .user-chip .user-nome { display: none; }
+  #sync-indicator { order: 3; }
 }
 @media (max-width: 400px) {
   .apps-grid { grid-template-columns: 1fr; }
@@ -386,6 +390,9 @@ body::before {
   #sync-modal > div, #modal-overlay > div, #modal-minha-senha > div, #confirm-overlay > div {
     max-height: none !important; padding: 20px !important;
   }
+  #overlay-func > div { padding: 18px !important; }
+  #func-form-grid { grid-template-columns: 1fr !important; }
+  #config-panel { margin-top: 24px !important; }
 }
 </style>
 </head>
@@ -546,7 +553,7 @@ body::before {
         <span style="font-size:16px">💬</span>
         <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--text)">Umbler</div>
       </div>
-      <div style="display:flex;gap:6px;margin-bottom:12px">
+      <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
         <button id="umbler-sub-btn-canais" onclick="setUmblerSub('canais')" style="height:34px;padding:0 14px;border-radius:8px;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">📡 Canais</button>
         <button id="umbler-sub-btn-usuarios" onclick="setUmblerSub('usuarios')" style="height:34px;padding:0 14px;border-radius:8px;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">👤 Usuários</button>
       </div>
@@ -593,7 +600,7 @@ body::before {
         <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--text)">Integrador</div>
         <span style="font-size:11px;color:var(--muted)">recebimento de pedidos (Bling→ERP) e lançamento de frete no contas a pagar</span>
       </div>
-      <div style="display:flex;gap:6px;margin-bottom:12px">
+      <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
         <button id="integ-sub-btn-canais" onclick="setIntegSub('canais')" style="height:34px;padding:0 14px;border-radius:8px;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">🧭 Canais &amp; de-para</button>
         <button id="integ-sub-btn-produtos" onclick="setIntegSub('produtos')" style="height:34px;padding:0 14px;border-radius:8px;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">🧩 Produtos &amp; Kits</button>
         <button id="integ-sub-btn-faturas" onclick="setIntegSub('faturas')" style="height:34px;padding:0 14px;border-radius:8px;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">💸 Faturas de frete</button>
@@ -2765,7 +2772,7 @@ init();
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;width:100%;max-width:1000px;padding:28px;position:relative">
     
     <!-- Header -->
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
       <div>
         <div style="font-size:20px;font-weight:800;color:var(--text-primary)">👥 Funcionários</div>
         <div style="font-size:12px;color:var(--muted);margin-top:2px">Cadastro central — usado em todos os sistemas</div>
@@ -2817,7 +2824,7 @@ init();
       <div style="font-size:14px;font-weight:700;color:var(--text-primary);margin-bottom:16px" id="func-form-titulo">Novo Funcionário</div>
       <div id="func-form-erro" style="display:none;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:var(--destructive);border-radius:8px;padding:10px 14px;font-size:12px;margin-bottom:14px"></div>
       <input type="hidden" id="func-id" />
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div id="func-form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div style="grid-column:1/-1">
           <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:5px">Nome *</label>
           <input id="func-nome" type="text" placeholder="Nome completo"
