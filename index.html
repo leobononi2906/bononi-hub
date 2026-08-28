@@ -635,10 +635,28 @@ body::before {
       </div>
       <div class="seg" style="margin-bottom:18px">
         <button id="integ-sub-btn-canais" onclick="setIntegSub('canais')">🧭 Canais</button>
+        <button id="integ-sub-btn-pedidos" onclick="setIntegSub('pedidos')">📋 Pedidos</button>
         <button id="integ-sub-btn-produtos" onclick="setIntegSub('produtos')">🧩 Produtos &amp; Kits</button>
         <button id="integ-sub-btn-faturas" onclick="setIntegSub('faturas')">💸 Faturas de frete</button>
       </div>
       <div id="integ-kpis" class="kpi-row"></div>
+
+      <!-- Subaba PEDIDOS (histórico das integrações) -->
+      <div id="integ-sub-pedidos" style="display:none">
+        <div class="tcard">
+          <div class="tcard-h">
+            <div>
+              <div class="t">Integrações — pedidos processados</div>
+              <div class="s">O que entrou do Bling: pronto pra gravar, gravado no ERP ou com erro (com o motivo).</div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <div id="integ-ped-filtros" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+              <button onclick="carregarPedidosInteg()" class="btn-s">↻ Atualizar</button>
+            </div>
+          </div>
+          <div id="integ-pedidos-lista" class="tcard-body tscroll">Carregando…</div>
+        </div>
+      </div>
 
       <!-- Subaba CANAIS & DE-PARA -->
       <div id="integ-sub-canais" style="border:1px solid var(--border);border-radius:14px;background:var(--surface);overflow:hidden">
@@ -1211,12 +1229,13 @@ let _fatVincCtes = [];      // CTes candidatos no modal
 
 function setIntegSub(sub) {
   _integSub = sub;
-  document.getElementById('integ-sub-canais').style.display   = sub==='canais'   ? '' : 'none';
-  document.getElementById('integ-sub-produtos').style.display = sub==='produtos' ? '' : 'none';
-  document.getElementById('integ-sub-faturas').style.display  = sub==='faturas'  ? '' : 'none';
-  ['canais','produtos','faturas'].forEach(k => document.getElementById('integ-sub-btn-'+k).classList.toggle('on', k===sub));
+  ['canais','pedidos','produtos','faturas'].forEach(k => {
+    document.getElementById('integ-sub-'+k).style.display = sub===k ? '' : 'none';
+    document.getElementById('integ-sub-btn-'+k).classList.toggle('on', k===sub);
+  });
   if (sub==='faturas'  && !_integ.faturas.length) carregarFaturas();
   if (sub==='produtos' && !_integ.pendencias) carregarPendencias();
+  if (sub==='pedidos'  && !_integ.pedidos) carregarPedidosInteg();
   renderIntegKpis();
 }
 
@@ -1241,8 +1260,68 @@ function renderIntegKpis() {
     const abertas = f.filter(x => x.status !== 'lancada').length;
     const val = f.reduce((s,x) => s + (Number(x.valor_total)||0), 0);
     html = kpi(f.length, 'Faturas') + kpi(abertas, 'Abertas', abertas?'#E07B00':'') + `<div class="kpi"><div class="v mono" style="font-size:19px">${_R(val)}</div><div class="l">Valor total</div></div>`;
+  } else if (_integSub === 'pedidos') {
+    const p = _integ.pedidos || [];
+    const grav = p.filter(x => x.status==='gravado').length;
+    const pron = p.filter(x => x.status==='pronto').length;
+    const err  = p.filter(x => x.status==='com_erro').length;
+    html = kpi(p.length, 'Pedidos') + kpi(grav, 'Gravados no ERP', grav?'#0F9D6E':'') + kpi(pron, 'Prontos', '#0077CC') + kpi(err, 'Com erro', err?'#D93025':'#0F9D6E');
   }
   box.innerHTML = html;
+}
+
+// ── Pedidos (histórico das integrações) ──
+let _integPedFiltro = 'todos';
+const _PED_ST = {
+  gravado:  { bdg:'bdg-ok',    txt:'gravado' },
+  pronto:   { bdg:'bdg-info',  txt:'pronto' },
+  com_erro: { bdg:'bdg-red',   txt:'com erro' },
+  recebido: { bdg:'bdg-muted', txt:'recebido' },
+};
+async function carregarPedidosInteg() {
+  const box = document.getElementById('integ-pedidos-lista');
+  box.innerHTML = 'Carregando…';
+  try {
+    const rows = await _sbGet('integ_pedido?select=id,origem,canal,num_pedido,data_pedido,cliente_nome,vl_total,status,erros,id_venda_erp,recebido_em,gravado_em&order=recebido_em.desc&limit=300');
+    _integ.pedidos = Array.isArray(rows) ? rows : [];
+    renderPedidosInteg();
+  } catch (e) {
+    box.innerHTML = `<div style="color:var(--destructive);font-size:13px">Erro ao ler pedidos: ${e.message}</div>`;
+  }
+}
+function setPedFiltro(f) { _integPedFiltro = f; renderPedidosInteg(); }
+function renderPedidosInteg() {
+  renderIntegKpis();
+  const box = document.getElementById('integ-pedidos-lista');
+  const all = _integ.pedidos || [];
+  const fbox = document.getElementById('integ-ped-filtros');
+  const counts = { todos: all.length, gravado:0, pronto:0, com_erro:0 };
+  all.forEach(p => { counts[p.status] = (counts[p.status]||0)+1; });
+  const chips = [['todos','Todos'],['gravado','Gravados'],['pronto','Prontos'],['com_erro','Com erro']];
+  if (fbox) fbox.innerHTML = chips.map(([k,l]) => {
+    const on = _integPedFiltro===k;
+    return `<button onclick="setPedFiltro('${k}')" style="height:30px;padding:0 11px;border-radius:8px;font-size:11px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer;border:1px solid ${on?'var(--blue)':'var(--border)'};background:${on?'var(--blue)':'var(--surface)'};color:${on?'#fff':'var(--muted)'}">${l} ${counts[k]||0}</button>`;
+  }).join('');
+  let dados = all;
+  if (_integPedFiltro !== 'todos') dados = all.filter(p => p.status === _integPedFiltro);
+  if (!dados.length) { box.innerHTML = `<div style="padding:20px 0;font-size:13px;color:var(--muted)">Nenhum pedido${_integPedFiltro==='todos'?'':' nesse status'} ainda.</div>`; return; }
+  const rows = dados.map(p => {
+    const st = _PED_ST[p.status] || { bdg:'bdg-muted', txt:p.status };
+    const erros = Array.isArray(p.erros) ? p.erros.join(' · ') : '';
+    const conta = (p.origem||'').replace('bling:','');
+    return `<tr>
+      <td class="mono" style="font-weight:600">${p.num_pedido||'—'}</td>
+      <td>${p.canal || conta || '—'}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.cliente_nome||'—'}</td>
+      <td class="mono" style="text-align:right">${_R(p.vl_total)}</td>
+      <td class="mono">${_fmtD(p.data_pedido)}</td>
+      <td><span class="bdg ${st.bdg}">${st.txt}</span>${p.id_venda_erp?`<br><span class="mono" style="font-size:10px;color:var(--muted)">venda ${p.id_venda_erp}</span>`:''}</td>
+      <td style="max-width:300px;font-size:11px;color:var(--destructive)">${erros}</td>
+    </tr>`;
+  }).join('');
+  box.innerHTML = `<table class="dtable" style="min-width:920px">
+    <thead><tr><th>Pedido</th><th>Canal</th><th>Cliente</th><th style="text-align:right">Valor</th><th>Data</th><th>Status</th><th>Motivo do erro</th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
 }
 
 async function carregarIntegrador() {
