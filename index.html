@@ -1402,7 +1402,9 @@ function _optsVend(idEmp, sel) {
 
 const _CONTA_LABEL = { bononi: 'Bononi', mlb: 'MLB', battogo: 'Battogo', outros: 'Outros' };
 let _integGruposAbertos = null;   // Set de contas expandidas
-function _integCanalCompleto(c) { return !!(c.id_empresa && c.id_tipo_saida && c.id_vendedor && c.id_condpag && c.id_centro_estoque); }
+function _integCanalCompleto(c) { return !!(c.id_empresa && c.id_tipo_saida && c.id_vendedor && c.id_condpag && c.id_centro_estoque && c.id_conta_receita && c.id_conta_frete && c.id_conta_comissao); }
+// contas padrão do plano por empresa (conferido no banco 02/09) — receita/frete/comissão + tipo fatura/carteira
+const _INTEG_CONTAS_PADRAO = { 7:{r:989,f:1107,co:1108,tf:5,cf:51}, 2:{r:823,f:939,co:940,tf:null,cf:null} };
 
 function _integCanalRow(c, i) {
   const emp = c.id_empresa || '';
@@ -1421,14 +1423,63 @@ function _integCanalRow(c, i) {
     <td><select class="f-inp" id="integ-centro-${i}" onchange="_integCampo(${i},'id_centro_estoque',this.value)" style="cursor:pointer;width:180px">${_optsCentro(emp, c.id_centro_estoque)}</select></td>
     <td style="text-align:center"><input type="checkbox" ${c.finalizar!==false?'checked':''} onchange="_integCampo(${i},'finalizar',this.checked)" title="Marcado = grava a venda já finalizada no ERP. Desmarcado = entra pendente/a conferir." style="width:18px;height:18px;cursor:pointer;accent-color:#0F9D6E" /></td>
     <td style="text-align:center"><input type="checkbox" ${c.ativo!==false?'checked':''} onchange="_integCampo(${i},'ativo',this.checked)" style="width:18px;height:18px;cursor:pointer;accent-color:var(--blue)" /></td>
+    <td style="text-align:center"><button onclick="toggleIntegContas(${i})" title="Plano de contas do financeiro (receita/frete/comissão + carteira)" style="border:1px solid var(--border);background:${(c.id_conta_receita&&c.id_conta_frete&&c.id_conta_comissao)?'var(--card)':'rgba(240,180,41,.12)'};color:var(--text);border-radius:8px;padding:5px 10px;cursor:pointer;font-size:13px">💰 ${(c.id_conta_receita&&c.id_conta_frete&&c.id_conta_comissao)?'Contas':'Definir'}</button></td>
     <td><button onclick="integSalvarCanal(${i})" class="btn-p">Salvar</button></td>
-  </tr>`;
+  </tr>${(_integContasAbertas&&_integContasAbertas.has(i))?_integFinRow(c,i):''}`;
+}
+
+// painel expansível: plano de contas do financeiro do canal
+function _integFinRow(c, i) {
+  const fin = (label, campo, ph, hint) => `<div style="display:flex;flex-direction:column;gap:3px;min-width:120px">
+    <span style="font-size:11px;color:var(--muted)">${label}</span>
+    <input class="f-inp" type="number" value="${c[campo]??''}" oninput="_integCampo(${i},'${campo}',this.value)" placeholder="${ph}" style="width:120px" />
+    ${hint?`<span style="font-size:10px;color:var(--muted)">${hint}</span>`:''}</div>`;
+  const temPadrao = !!_INTEG_CONTAS_PADRAO[c.id_empresa];
+  return `<tr><td colspan="12" style="background:rgba(120,140,170,.06);border-top:1px dashed var(--border);padding:14px 20px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <span style="font-size:13px;font-weight:700;color:var(--text)">💰 Financeiro — plano de contas do título a receber</span>
+      ${_integFinResumo(c)}
+      ${temPadrao?`<button onclick="integContasPadrao(${i})" style="margin-left:auto;border:1px solid var(--blue);background:var(--card);color:var(--blue);border-radius:8px;padding:5px 12px;cursor:pointer;font-size:12px">Usar padrão da empresa ${c.id_empresa}</button>`:''}
+    </div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
+      ${fin('Receita (+)', 'id_conta_receita', 'ex: 989', 'VENDAS IMPORTADOS')}
+      ${fin('Cupom (−)', 'id_conta_taxa_online', 'ex: 1104', 'desconto de cupom ML')}
+      ${fin('Frete (−)', 'id_conta_frete', 'ex: 1107', 'FRETE E-COMMERCE PGTO')}
+      ${fin('Comissão (−)', 'id_conta_comissao', 'ex: 1108', 'COMISSAO E-COMMERCE')}
+      <div style="width:1px;align-self:stretch;background:var(--border)"></div>
+      ${fin('Tipo de fatura', 'id_tipo_fatura', 'ex: 5', 'opcional')}
+      ${fin('Carteira/banco', 'id_conta_fin', 'ex: 51', 'senão nasce sem carteira')}
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.6">
+      O título a receber entra pelo <b>líquido</b> (receita − frete − comissão), rateado nessas contas. <b>Modalidade 'N'</b> é automática.
+      Sem as 3 contas (receita/frete/comissão) o financeiro <b>não monta</b> e o pedido não passa.
+    </div>
+  </td></tr>`;
 }
 
 function toggleIntegGrupo(conta) {
   if (!_integGruposAbertos) _integGruposAbertos = new Set();
   if (_integGruposAbertos.has(conta)) _integGruposAbertos.delete(conta); else _integGruposAbertos.add(conta);
   renderIntegCanais();
+}
+let _integContasAbertas = null;   // Set de índices com o painel financeiro aberto
+function toggleIntegContas(i) {
+  if (!_integContasAbertas) _integContasAbertas = new Set();
+  if (_integContasAbertas.has(i)) _integContasAbertas.delete(i); else _integContasAbertas.add(i);
+  renderIntegCanais();
+}
+function integContasPadrao(i) {
+  const c = _integ.cfg[i]; if (!c) return;
+  const d = _INTEG_CONTAS_PADRAO[c.id_empresa];
+  if (!d) { alert('Sem padrão pra essa empresa — preencha as contas manualmente.'); return; }
+  c.id_conta_receita = d.r; c.id_conta_frete = d.f; c.id_conta_comissao = d.co;
+  c.id_tipo_fatura = d.tf; c.id_conta_fin = d.cf;
+  renderIntegCanais();
+}
+// resumo do financeiro numa linha (pro cabeçalho do painel)
+function _integFinResumo(c) {
+  const ok = c.id_conta_receita && c.id_conta_frete && c.id_conta_comissao;
+  return ok ? `<span class="bdg bdg-ok">contas ok</span>` : `<span class="bdg bdg-warn">faltam contas</span>`;
 }
 
 function renderIntegCanais() {
@@ -1450,7 +1501,7 @@ function renderIntegCanais() {
   }
   const thead = `<thead><tr>
     <th>Tipo de venda (loja)</th><th>Status</th><th>Empresa</th><th>Operação</th><th>Vendedor</th>
-    <th>Cond. Pagto</th><th>Centro estoque</th><th style="text-align:center" title="Grava a venda já finalizada no ERP?">Finalizar</th><th style="text-align:center">Ativo</th><th></th>
+    <th>Cond. Pagto</th><th>Centro estoque</th><th style="text-align:center" title="Grava a venda já finalizada no ERP?">Finalizar</th><th style="text-align:center">Ativo</th><th style="text-align:center" title="Plano de contas do financeiro">Financeiro</th><th></th>
   </tr></thead>`;
   box.innerHTML = ordem.map(conta => {
     const idxs = grupos[conta];
@@ -1478,7 +1529,9 @@ function renderIntegCanais() {
 function _integCampo(i, campo, val) {
   const c = _integ.cfg[i]; if (!c) return;
   if (campo === 'ativo' || campo === 'finalizar') c[campo] = val;
-  else if (['id_empresa','id_tipo_saida','id_vendedor','id_condpag','id_centro_estoque'].includes(campo))
+  else if (['id_empresa','id_tipo_saida','id_vendedor','id_condpag','id_centro_estoque',
+            'id_conta_receita','id_conta_frete','id_conta_comissao','id_conta_taxa_online',
+            'id_tipo_fatura','id_conta_fin'].includes(campo))
     c[campo] = val === '' ? null : Number(val);
   else c[campo] = val;   // nome, canal, conta (texto)
 }
@@ -1490,7 +1543,7 @@ function _integRecarregaDeps(i) {
   if (cs) cs.innerHTML = _optsCentro(c.id_empresa, c.id_centro_estoque);
 }
 function integNovoCanal() {
-  _integ.cfg.unshift({ canal:'', nome:'', conta:null, loja_id:null, id_empresa:null, id_tipo_saida:null, id_vendedor:null, id_condpag:null, id_centro_estoque:null, finalizar:true, ativo:true, _novo:true });
+  _integ.cfg.unshift({ canal:'', nome:'', conta:null, loja_id:null, id_empresa:null, id_tipo_saida:null, id_vendedor:null, id_condpag:null, id_centro_estoque:null, id_conta_receita:null, id_conta_frete:null, id_conta_comissao:null, id_tipo_fatura:null, id_conta_fin:null, finalizar:true, ativo:true, _novo:true });
   if (!_integGruposAbertos) _integGruposAbertos = new Set();
   _integGruposAbertos.add('outros');   // abre o grupo do canal novo
   renderIntegCanais();
@@ -1506,6 +1559,9 @@ async function integSalvarCanal(i) {
     canal: chave, nome: c.nome || null, conta: c.conta || null, loja_id: c.loja_id ?? null,
     id_empresa: c.id_empresa, id_tipo_saida: c.id_tipo_saida, id_vendedor: c.id_vendedor,
     id_condpag: c.id_condpag, id_centro_estoque: c.id_centro_estoque,
+    id_conta_receita: c.id_conta_receita ?? null, id_conta_frete: c.id_conta_frete ?? null,
+    id_conta_comissao: c.id_conta_comissao ?? null, id_conta_taxa_online: c.id_conta_taxa_online ?? null,
+    id_tipo_fatura: c.id_tipo_fatura ?? null, id_conta_fin: c.id_conta_fin ?? null,
     finalizar: c.finalizar !== false, ativo: c.ativo !== false,
   };
   try {
