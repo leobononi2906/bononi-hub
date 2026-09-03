@@ -642,6 +642,7 @@ body::before {
         <button id="integ-sub-btn-pedidos" onclick="setIntegSub('pedidos')">📋 Pedidos</button>
         <button id="integ-sub-btn-produtos" onclick="setIntegSub('produtos')">🧩 Produtos &amp; Kits</button>
         <button id="integ-sub-btn-faturas" onclick="setIntegSub('faturas')">💸 Faturas de frete</button>
+        <button id="integ-sub-btn-automacoes" onclick="setIntegSub('automacoes')">⚙️ Automações</button>
       </div>
       <div id="integ-kpis" class="kpi-row"></div>
 
@@ -678,6 +679,40 @@ body::before {
           </div>
         </div>
         <div id="integ-canais-lista" style="padding:12px 18px 16px;overflow-x:auto">Carregando…</div>
+      </div>
+
+      <!-- Subaba AUTOMAÇÕES → Transferência entre empresas -->
+      <div id="integ-sub-automacoes" style="display:none;border:1px solid var(--border);border-radius:14px;background:var(--surface);overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:10px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:16px">🔁</span>
+            <div>
+              <div style="font-size:14px;font-weight:700;color:var(--text)">Transferência entre empresas — rotas</div>
+              <div style="font-size:11px;color:var(--muted)">Quando um produto é vendido por uma empresa <b>sem estoque</b>, a automação transfere da empresa que tem. Cada <b>rota</b> define <b>de qual empresa sai → pra qual entra</b>, o <b>tipo de saída/entrada</b> e <b>como o valor sai</b>. A automação lança os 2 pedidos; a finalização + NF ficam no SGA.</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button onclick="rotaNova()" style="height:32px;padding:0 12px;background:linear-gradient(135deg,var(--blue),#0284C7);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer">+ Rota</button>
+            <button onclick="carregarRotas()" style="height:32px;padding:0 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer">↻ Atualizar</button>
+          </div>
+        </div>
+        <div id="integ-rotas-lista" style="padding:12px 18px 16px;overflow-x:auto">Carregando…</div>
+        <div style="padding:0 18px 16px;font-size:11px;color:var(--muted)">⏳ Esta tela é a <b>configuração</b> das rotas. O <b>robô diário</b> que lê essas rotas e lança os pedidos é a próxima etapa (motor de execução). <b>Fornecedora por produto</b> é manual por enquanto — descobrir automático (quem tem estoque) fica como melhoria.</div>
+      </div>
+
+      <!-- Modal: produtos de uma rota -->
+      <div id="rota-prod-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);align-items:center;justify-content:center;padding:20px">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;width:min(560px,96vw);max-height:88vh;display:flex;flex-direction:column;overflow:hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)">
+            <div style="font-size:14px;font-weight:700;color:var(--text)" id="rota-prod-titulo">Produtos da rota</div>
+            <button onclick="fecharProdutosRota()" style="background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer;line-height:1">×</button>
+          </div>
+          <div style="padding:14px 18px;border-bottom:1px solid var(--border);position:relative">
+            <input id="rota-prod-busca" oninput="buscarProdutoRota(this.value)" placeholder="Buscar produto por código, referência ou nome…" style="width:100%;height:34px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px" />
+            <div id="rota-prod-busca-res" style="position:absolute;left:18px;right:18px;background:var(--surface);border:1px solid var(--border);border-radius:8px;z-index:2;max-height:220px;overflow:auto"></div>
+          </div>
+          <div id="rota-prod-lista" style="padding:14px 18px;overflow:auto;flex:1">Carregando…</div>
+        </div>
       </div>
 
       <!-- Subaba PRODUTOS & KITS (resolver pendências) -->
@@ -1252,7 +1287,7 @@ const INTEG_EMP_CNPJ = {
   '57129987000166':1,'05864790000177':2,'05864790000258':3,'05864790000339':4,
   '73403826000175':5,'51054503000180':6,'15090647000200':8,'15090647000119':7,'15090647000129':7,
 };
-let _integ = { cfg: [], empresas: [], centrosPorEmp: {}, vend: [], faturas: [] };
+let _integ = { cfg: [], empresas: [], centrosPorEmp: {}, vend: [], faturas: [], rotas: null, rotaProdCount: {} };
 let _integSub = 'canais';
 let _fatVincAtual = null;   // fatura sendo vinculada
 let _fatVincCtes = [];      // CTes candidatos no modal
@@ -1261,13 +1296,14 @@ let _vincBusca = '';         // termo de busca no modal
 
 function setIntegSub(sub) {
   _integSub = sub;
-  ['canais','pedidos','produtos','faturas'].forEach(k => {
+  ['canais','pedidos','produtos','faturas','automacoes'].forEach(k => {
     document.getElementById('integ-sub-'+k).style.display = sub===k ? '' : 'none';
     document.getElementById('integ-sub-btn-'+k).classList.toggle('on', k===sub);
   });
   if (sub==='faturas'  && !_integ.faturas.length) carregarFaturas();
   if (sub==='produtos' && !_integ.pendencias) carregarPendencias();
   if (sub==='pedidos'  && !_integ.pedidos) carregarPedidosInteg();
+  if (sub==='automacoes' && !_integ.rotas) carregarRotas();
   renderIntegKpis();
 }
 
@@ -1400,6 +1436,168 @@ function _optsVend(idEmp, sel) {
     `<option value="${v.id_vendedor}"${Number(sel)===v.id_vendedor?' selected':''}>${v.id_vendedor} · ${v.nome_vendedor}</option>`).join('');
 }
 
+// ══════════ Automações → Transferência entre empresas (rotas) ══════════
+const _MODO_VALOR = { custo:'Custo', preco:'Preço de venda', ultima_entrada:'Última entrada', fixo:'Fixo (R$)' };
+async function carregarRotas() {
+  const lista = document.getElementById('integ-rotas-lista');
+  if (lista) lista.innerHTML = 'Carregando…';
+  try {
+    if (!_integ.empresas.length) await carregarIntegrador();
+    const [r, prod] = await Promise.all([
+      _sbGet('integ_transferencia_rota?select=*&order=id_empresa_origem.asc,id_empresa_destino.asc'),
+      _sbGet('integ_transferencia_rota_produto?select=rota_id'),
+    ]);
+    _integ.rotas = Array.isArray(r) ? r : [];
+    const cnt = {}; (Array.isArray(prod)?prod:[]).forEach(p => { cnt[p.rota_id] = (cnt[p.rota_id]||0) + 1; });
+    _integ.rotaProdCount = cnt;
+    renderRotas();
+  } catch (e) {
+    if (lista) lista.innerHTML = `<div style="color:var(--destructive);font-size:13px">Erro ao carregar rotas: ${e.message}</div>`;
+  }
+}
+function _optsModoValor(sel) {
+  return Object.entries(_MODO_VALOR).map(([k,l]) => `<option value="${k}"${sel===k?' selected':''}>${l}</option>`).join('');
+}
+function rotaNova() {
+  _integ.rotas = _integ.rotas || [];
+  _integ.rotas.unshift({ id:null, id_empresa_origem:null, id_empresa_destino:null, id_tipo_saida:null, id_tipo_entrada:null, modo_valor:'custo', valor_fixo:null, ativo:true, _novo:true });
+  renderRotas();
+}
+function _rotaCampo(i, campo, val) {
+  const r = _integ.rotas[i]; if (!r) return;
+  if (campo === 'ativo') r[campo] = val;
+  else if (campo === 'modo_valor') { r[campo] = val || 'custo'; renderRotas(); }
+  else r[campo] = (val === '' ? null : Number(val));
+}
+function renderRotas() {
+  const box = document.getElementById('integ-rotas-lista'); if (!box) return;
+  const rotas = _integ.rotas || [];
+  if (!rotas.length) { box.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 2px">Nenhuma rota ainda. Clique em <b>+ Rota</b> pra criar a primeira (ex.: Bononi SC → MLB SC).</div>'; return; }
+  const head = ['Empresa que SAI','Empresa que ENTRA','Tipo saída','Tipo entrada','Valor','Ativo',''];
+  let html = '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr>' +
+    head.map(h => `<th style="text-align:left;padding:6px 8px;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px">${h}</th>`).join('') + '</tr></thead><tbody>';
+  rotas.forEach((r, i) => {
+    const fixo = r.modo_valor === 'fixo';
+    html += `<tr id="rota-row-${i}" style="border-top:1px solid var(--border)">
+      <td style="padding:6px 8px"><select class="f-inp" onchange="_rotaCampo(${i},'id_empresa_origem',this.value)" style="cursor:pointer;width:160px">${_optsEmpresa(r.id_empresa_origem)}</select></td>
+      <td style="padding:6px 8px"><select class="f-inp" onchange="_rotaCampo(${i},'id_empresa_destino',this.value)" style="cursor:pointer;width:160px">${_optsEmpresa(r.id_empresa_destino)}</select></td>
+      <td style="padding:6px 8px"><input class="f-inp" type="number" value="${r.id_tipo_saida??''}" oninput="_rotaCampo(${i},'id_tipo_saida',this.value)" placeholder="cód" title="Tipo de saída intergrupo (código do SGA)" style="width:70px" /></td>
+      <td style="padding:6px 8px"><input class="f-inp" type="number" value="${r.id_tipo_entrada??''}" oninput="_rotaCampo(${i},'id_tipo_entrada',this.value)" placeholder="cód" title="Tipo de entrada intergrupo (código do SGA)" style="width:70px" /></td>
+      <td style="padding:6px 8px"><select class="f-inp" onchange="_rotaCampo(${i},'modo_valor',this.value)" style="cursor:pointer;width:140px">${_optsModoValor(r.modo_valor||'custo')}</select>${fixo?`<input class="f-inp" type="number" step="0.01" value="${r.valor_fixo??''}" oninput="_rotaCampo(${i},'valor_fixo',this.value)" placeholder="R$" style="width:90px;margin-left:6px" />`:''}</td>
+      <td style="padding:6px 8px;text-align:center"><input type="checkbox" ${r.ativo!==false?'checked':''} onchange="_rotaCampo(${i},'ativo',this.checked)" style="width:18px;height:18px;cursor:pointer;accent-color:#0F9D6E" /></td>
+      <td style="padding:6px 8px;white-space:nowrap"><button onclick="abrirProdutosRota(${i})" title="Produtos que esta rota cobre" style="height:30px;padding:0 10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);cursor:pointer;font-size:12px">🧩 Produtos${r.id?` (${_integ.rotaProdCount[r.id]||0})`:''}</button> <button onclick="salvarRota(${i})" class="btn-p" style="height:30px;padding:0 12px">Salvar</button> <button onclick="excluirRota(${i})" title="Excluir rota" style="height:30px;padding:0 10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--destructive);cursor:pointer">🗑</button></td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  box.innerHTML = html;
+}
+async function salvarRota(i) {
+  const r = _integ.rotas[i]; if (!r) return;
+  if (!r.id_empresa_origem || !r.id_empresa_destino) { alert('Escolha a empresa que sai e a que entra.'); return; }
+  if (Number(r.id_empresa_origem) === Number(r.id_empresa_destino)) { alert('A empresa que sai não pode ser a mesma que entra.'); return; }
+  const num = (v) => (v!=null && v!=='' ? Number(v) : null);
+  const payload = {
+    id_empresa_origem: Number(r.id_empresa_origem), id_empresa_destino: Number(r.id_empresa_destino),
+    id_tipo_saida: num(r.id_tipo_saida), id_tipo_entrada: num(r.id_tipo_entrada),
+    modo_valor: r.modo_valor || 'custo',
+    valor_fixo: r.modo_valor === 'fixo' ? num(r.valor_fixo) : null,
+    ativo: r.ativo !== false, atualizado_em: new Date().toISOString(),
+  };
+  const btn = document.querySelector(`#rota-row-${i} button.btn-p`);
+  try {
+    if (r.id) {
+      await _sbWrite('integ_transferencia_rota?id=eq.'+r.id, 'PATCH', payload, 'return=representation');
+    } else {
+      const ins = await _sbWrite('integ_transferencia_rota', 'POST', payload, 'return=representation');
+      if (Array.isArray(ins) && ins[0]) { r.id = ins[0].id; delete r._novo; }
+    }
+    if (btn) { btn.textContent='✓ Salvo'; btn.style.background='#0F9D6E'; setTimeout(()=>{ btn.textContent='Salvar'; btn.style.background=''; }, 1400); }
+  } catch (e) { alert('Erro ao salvar rota: ' + e.message); }
+}
+async function excluirRota(i) {
+  const r = _integ.rotas[i]; if (!r) return;
+  if (!confirm('Excluir esta rota de transferência? (os produtos vinculados também saem)')) return;
+  try {
+    if (r.id) await _sbWrite('integ_transferencia_rota?id=eq.'+r.id, 'DELETE', undefined, 'return=minimal');
+    _integ.rotas.splice(i, 1);
+    renderRotas();
+  } catch (e) { alert('Erro ao excluir: ' + e.message); }
+}
+
+// ── Produtos de uma rota (config b: fornecedora por produto) ──
+let _rotaProd = { rotaId:null, i:null, itens:[] };
+let _rotaBuscaT = null;
+async function abrirProdutosRota(i) {
+  const r = _integ.rotas[i]; if (!r) return;
+  if (!r.id) { alert('Salve a rota primeiro (empresa que sai e que entra), depois adicione os produtos.'); return; }
+  _rotaProd = { rotaId:r.id, i, itens:[] };
+  const nomeEmp = (id) => (_integ.empresas.find(e => e.id===Number(id))||{}).nome || id;
+  document.getElementById('rota-prod-titulo').textContent = `Produtos — ${nomeEmp(r.id_empresa_origem)} → ${nomeEmp(r.id_empresa_destino)}`;
+  document.getElementById('rota-prod-busca').value = '';
+  document.getElementById('rota-prod-busca-res').innerHTML = '';
+  document.getElementById('rota-prod-modal').style.display = 'flex';
+  await carregarProdutosRota();
+}
+function fecharProdutosRota() {
+  document.getElementById('rota-prod-modal').style.display = 'none';
+  if (_rotaProd.rotaId != null) _integ.rotaProdCount[_rotaProd.rotaId] = _rotaProd.itens.length;
+  renderRotas();
+}
+async function carregarProdutosRota() {
+  const box = document.getElementById('rota-prod-lista'); box.innerHTML = 'Carregando…';
+  try {
+    const rows = await _sbGet(`integ_transferencia_rota_produto?rota_id=eq.${_rotaProd.rotaId}&select=*&order=id_produto.asc`);
+    _rotaProd.itens = Array.isArray(rows) ? rows : [];
+    renderProdutosRota();
+  } catch (e) { box.innerHTML = `<div style="color:var(--destructive);font-size:13px">Erro: ${e.message}</div>`; }
+}
+function renderProdutosRota() {
+  const box = document.getElementById('rota-prod-lista');
+  const it = _rotaProd.itens;
+  if (!it.length) { box.innerHTML = '<div style="font-size:13px;color:var(--muted)">Nenhum produto ainda. Use a busca acima pra adicionar.</div>'; return; }
+  box.innerHTML = `<div style="font-size:11px;color:var(--muted);margin-bottom:6px">${it.length} produto(s) nesta rota</div>` +
+    it.map(p => `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0;border-top:1px solid var(--border)">
+      <div style="font-size:13px;color:var(--text)"><b>${p.id_produto}</b>${p.referencia?` · ${p.referencia}`:''} — ${p.descricao||''}</div>
+      <button onclick="removeProdutoRota(${p.id})" title="Remover" style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--destructive);cursor:pointer;padding:2px 8px">remover</button>
+    </div>`).join('');
+}
+function buscarProdutoRota(q) {
+  clearTimeout(_rotaBuscaT);
+  _rotaBuscaT = setTimeout(async () => {
+    const res = document.getElementById('rota-prod-busca-res');
+    const termo = (q||'').trim();
+    if (termo.length < 2) { res.innerHTML=''; return; }
+    try {
+      const enc = encodeURIComponent(`*${termo}*`);
+      const rows = await _sbGet(`vw_fb_produtos_compras?select=id_produto,referencia,nome&or=(nome.ilike.${enc},referencia.ilike.${enc})&limit=8`);
+      const jaTem = new Set(_rotaProd.itens.map(p => p.id_produto));
+      const clean = (s) => String(s||'').replace(/['"\\]/g,'').slice(0,60);
+      res.innerHTML = (rows||[]).map(r => {
+        const tem = jaTem.has(r.id_produto);
+        const click = tem ? '' : `onclick="addProdutoRota(${r.id_produto},'${clean(r.referencia)}','${clean(r.nome)}')"`;
+        return `<div ${click} style="padding:6px 8px;border-top:1px solid var(--border);font-size:12px;cursor:${tem?'default':'pointer'};color:${tem?'var(--muted)':'var(--text)'}"><b>${r.id_produto}</b> · ${r.referencia||''} — ${r.nome||''} ${tem?'✓ já está':''}</div>`;
+      }).join('') || '<div style="padding:6px 8px;font-size:12px;color:var(--muted)">nada encontrado</div>';
+    } catch (e) { res.innerHTML = `<div style="padding:6px 8px;font-size:12px;color:var(--destructive)">${e.message}</div>`; }
+  }, 250);
+}
+async function addProdutoRota(idProduto, referencia, descricao) {
+  try {
+    await _sbWrite('integ_transferencia_rota_produto?on_conflict=rota_id,id_produto', 'POST',
+      { rota_id:_rotaProd.rotaId, id_produto:idProduto, referencia:referencia||null, descricao:descricao||null },
+      'return=minimal,resolution=merge-duplicates');
+    document.getElementById('rota-prod-busca').value = '';
+    document.getElementById('rota-prod-busca-res').innerHTML = '';
+    await carregarProdutosRota();
+  } catch (e) { alert('Erro ao adicionar: ' + e.message); }
+}
+async function removeProdutoRota(id) {
+  try {
+    await _sbWrite('integ_transferencia_rota_produto?id=eq.'+id, 'DELETE', undefined, 'return=minimal');
+    _rotaProd.itens = _rotaProd.itens.filter(p => p.id !== id);
+    renderProdutosRota();
+  } catch (e) { alert('Erro ao remover: ' + e.message); }
+}
+
 const _CONTA_LABEL = { bononi: 'Bononi', mlb: 'MLB', battogo: 'Battogo', outros: 'Outros' };
 let _integGruposAbertos = null;   // Set de contas expandidas
 function _integCanalCompleto(c) { return !!(c.id_empresa && c.id_tipo_saida && c.id_vendedor && c.id_condpag && c.id_centro_estoque && c.id_conta_receita && c.id_conta_frete && c.id_conta_comissao); }
@@ -1421,7 +1619,6 @@ function _integCanalRow(c, i) {
     <td><select class="f-inp" id="integ-vend-${i}" onchange="_integCampo(${i},'id_vendedor',this.value)" style="cursor:pointer;width:190px">${_optsVend(emp, c.id_vendedor)}</select></td>
     <td><input class="f-inp" type="number" value="${c.id_condpag??''}" oninput="_integCampo(${i},'id_condpag',this.value)" placeholder="cód" title="Cond. pagamento (ERP)" style="width:66px" /></td>
     <td><select class="f-inp" id="integ-centro-${i}" onchange="_integCampo(${i},'id_centro_estoque',this.value)" style="cursor:pointer;width:180px">${_optsCentro(emp, c.id_centro_estoque)}</select></td>
-    <td style="text-align:center"><input type="checkbox" ${c.finalizar!==false?'checked':''} onchange="_integCampo(${i},'finalizar',this.checked)" title="Marcado = grava a venda já finalizada no ERP. Desmarcado = entra pendente/a conferir." style="width:18px;height:18px;cursor:pointer;accent-color:#0F9D6E" /></td>
     <td style="text-align:center"><input type="checkbox" ${c.ativo!==false?'checked':''} onchange="_integCampo(${i},'ativo',this.checked)" style="width:18px;height:18px;cursor:pointer;accent-color:var(--blue)" /></td>
     <td style="text-align:center"><button onclick="toggleIntegContas(${i})" title="Plano de contas do financeiro (receita/frete/comissão + carteira)" style="border:1px solid var(--border);background:${(c.id_conta_receita&&c.id_conta_frete&&c.id_conta_comissao)?'var(--card)':'rgba(240,180,41,.12)'};color:var(--text);border-radius:8px;padding:5px 10px;cursor:pointer;font-size:13px">💰 ${(c.id_conta_receita&&c.id_conta_frete&&c.id_conta_comissao)?'Contas':'Definir'}</button></td>
     <td><button onclick="integSalvarCanal(${i})" class="btn-p">Salvar</button></td>
@@ -1501,7 +1698,7 @@ function renderIntegCanais() {
   }
   const thead = `<thead><tr>
     <th>Tipo de venda (loja)</th><th>Status</th><th>Empresa</th><th>Operação</th><th>Vendedor</th>
-    <th>Cond. Pagto</th><th>Centro estoque</th><th style="text-align:center" title="Grava a venda já finalizada no ERP?">Finalizar</th><th style="text-align:center">Ativo</th><th style="text-align:center" title="Plano de contas do financeiro">Financeiro</th><th></th>
+    <th>Cond. Pagto</th><th>Centro estoque</th><th style="text-align:center">Ativo</th><th style="text-align:center" title="Plano de contas do financeiro">Financeiro</th><th></th>
   </tr></thead>`;
   box.innerHTML = ordem.map(conta => {
     const idxs = grupos[conta];
@@ -1528,7 +1725,7 @@ function renderIntegCanais() {
 
 function _integCampo(i, campo, val) {
   const c = _integ.cfg[i]; if (!c) return;
-  if (campo === 'ativo' || campo === 'finalizar') c[campo] = val;
+  if (campo === 'ativo') c[campo] = val;
   else if (['id_empresa','id_tipo_saida','id_vendedor','id_condpag','id_centro_estoque',
             'id_conta_receita','id_conta_frete','id_conta_comissao','id_conta_taxa_online',
             'id_tipo_fatura','id_conta_fin'].includes(campo))
@@ -1543,7 +1740,7 @@ function _integRecarregaDeps(i) {
   if (cs) cs.innerHTML = _optsCentro(c.id_empresa, c.id_centro_estoque);
 }
 function integNovoCanal() {
-  _integ.cfg.unshift({ canal:'', nome:'', conta:null, loja_id:null, id_empresa:null, id_tipo_saida:null, id_vendedor:null, id_condpag:null, id_centro_estoque:null, id_conta_receita:null, id_conta_frete:null, id_conta_comissao:null, id_tipo_fatura:null, id_conta_fin:null, finalizar:true, ativo:true, _novo:true });
+  _integ.cfg.unshift({ canal:'', nome:'', conta:null, loja_id:null, id_empresa:null, id_tipo_saida:null, id_vendedor:null, id_condpag:null, id_centro_estoque:null, id_conta_receita:null, id_conta_frete:null, id_conta_comissao:null, id_tipo_fatura:null, id_conta_fin:null, ativo:true, _novo:true });
   if (!_integGruposAbertos) _integGruposAbertos = new Set();
   _integGruposAbertos.add('outros');   // abre o grupo do canal novo
   renderIntegCanais();
@@ -1562,7 +1759,7 @@ async function integSalvarCanal(i) {
     id_conta_receita: c.id_conta_receita ?? null, id_conta_frete: c.id_conta_frete ?? null,
     id_conta_comissao: c.id_conta_comissao ?? null, id_conta_taxa_online: c.id_conta_taxa_online ?? null,
     id_tipo_fatura: c.id_tipo_fatura ?? null, id_conta_fin: c.id_conta_fin ?? null,
-    finalizar: c.finalizar !== false, ativo: c.ativo !== false,
+    ativo: c.ativo !== false,
   };
   try {
     await _sbWrite('integ_config_canal?on_conflict=canal', 'POST', payload, 'return=representation,resolution=merge-duplicates');
