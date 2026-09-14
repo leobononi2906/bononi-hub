@@ -109,6 +109,16 @@ body::before { display: none; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spin { animation-duration: 1.6s; } }
 
+/* Ponto do indicador de sync em estado de ERRO (verificarSync aplica por JS).
+   Só fade — o DS não admite animação de escala. */
+@keyframes pulse-red {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .35; }
+}
+@media (prefers-reduced-motion: reduce) {
+  @keyframes pulse-red { 0%, 100% { opacity: 1; } }
+}
+
 /* ── LOGIN ── */
 #login-wrap {
   display: none;

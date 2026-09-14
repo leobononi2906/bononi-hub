@@ -2,6 +2,10 @@
 
 > Atualizado: 2026-09-14
 
+> **Referência completa do app:** [`ARQUITETURA.md`](ARQUITETURA.md) — estrutura, modelo de
+> acesso, camada de dados, convenções, runbooks e armadilhas. Este arquivo aqui é o **estado
+> atual**: pendências e dev-log.
+
 ## O que é
 Portal central de entrada do grupo. **Login unificado** (Supabase Auth) e **controle de quem acessa qual app**. É aqui que se liberam/revogam acessos. Também tem cadastro central de Funcionários (`rh_funcionarios`), troca de senha e um indicador de sync do ERP.
 
@@ -28,6 +32,8 @@ Cada app checa a SUA chave no login.
 financeiro→Dashboard · compras · assistencia · cobranca · ecommerce · **atacado→CRM** · **stonni→Portal Rep** · frete · loja · operacoes · expedicao · rede-autorizada · **varejo→Consulta Vendas**.
 Fonte da verdade: listas `APPS` + `MODULOS_LABELS` no `index.html` — **app novo entra nos DOIS**.
 
+⚠️ **As duas listas não batem hoje** (conferido 14/09): `MODULOS_LABELS` tem as 13 chaves, mas `APPS` só tem **11 cartões** — `atacado` e `operacoes` são acesso concedível **sem cartão nenhum no portal**. Quem recebe não vê o app e não há mensagem de erro. Ver pendências.
+
 ## Como se libera/revoga (só admin)
 Botões ⚙️ Usuários / 👥 Funcionários. Listar: RPC `admin_listar_usuarios` (devolve `admin_modulos` desde 11/08). Editar acesso: RPC `admin_atualizar_usuario(p_uid, p_meta)` grava `{nome,admin,modulos,admin_modulos,email_verified}` (agora com **merge** `||`, não sobrescreve mais o metadata inteiro). Criar/deletar/resetar senha: Edge `admin-usuarios` (service_role). Revogar = desmarcar módulo e salvar.
 
@@ -38,6 +44,9 @@ No modal, cada módulo tem um toggle **🛡️ admin** (só habilita se o acesso
 Em produção, já com o **design system da marca** aplicado (14/09, commit `284f085`). Telas: Login · Portal (grid de apps por permissão) · Admin Usuários · modal Editar/Criar usuário · modal Minha Senha · modal Funcionários · indicador+modal de Sync ERP.
 
 ## Pendências / próximos passos
+- [ ] **Decidir o destino de `atacado` e `operacoes`** — estão em `MODULOS_LABELS` (dá pra conceder
+      o acesso) mas **não têm cartão em `APPS`**, então quem recebe não vê nada no portal. Ou entra
+      em `APPS`, ou sai de `MODULOS_LABELS`. Achado ao documentar em 14/09.
 - [ ] (Futuro) Atualizar a Edge `admin-usuarios` p/ aceitar `admin_modulos` na criação.
 - [ ] (Futuro/enforcement) Cada app ler `admin_modulos` p/ liberar suas telas de admin.
 - [ ] `financeiro`: nota "atualizar quando dasu_financeiro estiver no ar" — verificar.
