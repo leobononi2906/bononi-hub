@@ -1,15 +1,20 @@
 # STATUS — Bononi Hub (porteiro / liberação de acessos)
 
-> Atualizado: 2026-08-18
+> Atualizado: 2026-09-14
 
 ## O que é
 Portal central de entrada do grupo. **Login unificado** (Supabase Auth) e **controle de quem acessa qual app**. É aqui que se liberam/revogam acessos. Também tem cadastro central de Funcionários (`rh_funcionarios`), troca de senha e um indicador de sync do ERP.
 
 ## Onde está
-- **Clone real (git):** C:\CLAUDE\Projetos GitHub\bononi-hub\bononi-hub  (remote `leobononi2906/bononi-hub`, branch `main`)
-  ⚠️ A pasta externa `bononi-hub\` é stub solto (sem git) — não editar lá.
+- **Clone real (git):** depende da máquina.
+  - máquina do Leo: `C:\CLAUDE\Projetos GitHub\bononi-hub\bononi-hub`
+  - máquina `ecommerce06`: `C:\Aplicações da bononi\bononi-hub` — **este é o clone com git** (remote `leobononi2906/bononi-hub`, branch `main`).
+  ⚠️ Qualquer outra pasta `bononi-hub\` solta é stub sem git — não editar lá.
 - **Deploy:** https://bononi-hub.vercel.app · **push na `main` = produção** (Vercel auto).
-- **Código:** `index.html` (app inteiro, ~1930 linhas). Anon key exposta é por design.
+- **Código:** `index.html` (app inteiro, ~3.600 linhas). Anon key exposta é por design.
+- **Design system:** `ds/bononi-ds.css` (tokens, **gerado** do pacote — não editar à mão) +
+  `assets/` (logotipo). Ver `docs/2026-09-14-design-system.md`.
+- **Rodar local:** `launch.json` → `bononi-hub`, porta **5286** (`serve-staging.py`, banco de teste).
 
 ## 🔑 Modelo de acesso
 Acesso mora no `user_metadata` do usuário:
@@ -30,9 +35,12 @@ No modal, cada módulo tem um toggle **🛡️ admin** (só habilita se o acesso
 ⚠️ **Edge `admin-usuarios` (criar) é deploy-only e ainda NÃO grava `admin_modulos`** → em usuário NOVO, definir o admin-por-app numa edição seguinte (a RPC de update grava). Atualizar a Edge é item futuro.
 
 ## Estado atual
+Em produção — **menos o redesign**, que está no working tree sem commit (ver dev-log 14/09).
 Em produção. Telas: Login · Portal (grid de apps por permissão) · Admin Usuários · modal Editar/Criar usuário · modal Minha Senha · modal Funcionários · indicador+modal de Sync ERP.
 
 ## Pendências / próximos passos
+- [ ] **Revisar e publicar o redesign (design system)** — pronto e conferido local, **sem commit**.
+      Mudança visual que a empresa inteira vê; `push` na `main` já é produção.
 - [ ] (Futuro) Atualizar a Edge `admin-usuarios` p/ aceitar `admin_modulos` na criação.
 - [ ] (Futuro/enforcement) Cada app ler `admin_modulos` p/ liberar suas telas de admin.
 - [ ] `financeiro`: nota "atualizar quando dasu_financeiro estiver no ar" — verificar.
@@ -52,6 +60,7 @@ Em produção. Telas: Login · Portal (grid de apps por permissão) · Admin Usu
 - Arquivo único grande — quebra gradual ao mexer.
 
 ## Dev-log
+- 2026-09-14 — **Design system Bononi aplicado (visual, sem tocar em lógica).** O Hub saiu do azul/`Syne`+`DM Sans` e passou a consumir o pacote do DS: `ds/bononi-ds.css` (tokens gerados do pacote) + `assets/` (logotipo oficial, que substituiu a marca-placeholder em SVG inline). O `:root` antigo virou **ponte** — cada nome velho (`--blue`, `--muted`, `--surface`…) aponta pro token semântico do DS, e assim as ~3.000 linhas de `style` inline herdaram a paleta sem reescrita uma a uma. **`--blue` virou tinta `#14161a`**, porque no DS a ação primária é tinta e o vermelho `#c11f25` é acento (um por tela). Varridas **702** ocorrências de literal (hex, rgba, fonte, raio, tamanho de fonte, sombra) pra token — **não sobrou hex fora do `ds/`** — e os 18 gradientes saíram (o DS proíbe). Os **152 emoji** viraram ícones **Lucide** pintados como CSS mask (`<i class="ic" data-ic="…">` / `ic()` em template string), hidratados por um `MutationObserver` — necessário porque o Hub monta tela com `innerHTML` em ~40 pontos. Onde o emoji estava em `textContent` ele caiu e ficou só o rótulo. Subabas da Umbler passaram a usar as mesmas Tabs do Integrador (rule vermelho de 2px). No celular a barra de ferramentas virou ícone puro (antes quebrava em 3 linhas). Consertado de passagem: `background:var(--card)` — variável que nunca existiu — no botão "Usar padrão da empresa". Verificado local na porta 5286 (login, portal, Integrador, Configuração, modal; desktop e 375px), `node --check` OK, zero erro de console do front. **NÃO commitado/deployado.** Detalhe completo: `docs/2026-09-14-design-system.md`.
 - 2026-08-20 — **Umbler fase 2: reestruturação do backend p/ análise (base IA, sem rodar IA).** Diagnóstico: `umbler_mensagens`/`direcao` é furada (mislabela os ~18k do BOT; confunde autor com dono da conversa). Verdade recuperável 100% de `umbler_eventos.payload` (`Source`/`SentByOrganizationMember`/`File`). Criada **camada canônica `umbler_msg`** (migração `umbler_msg_canonico`): papel cliente/atendente/bot/externo, autor real (→`umbler_usuarios`), mídia+`transcricao`, função idempotente `umbler_msg_backfill()`. Backfill = **53.441 msgs** (papel bate com Source; atendente=14.900/15 autores). Também `vw_umbler_conversa_metricas` (métrica por conversa — mas feita sobre a `direcao` velha, **rebasear em `umbler_msg` antes de virar KPI**). NÃO-destrutivo (não toca intake/umbler_mensagens). **Gaps p/ IA ler:** transcrição de áudio/imagem (Umbler não transcreve; maioria das respostas é áudio), URL de mídia nula, cron do backfill (a pedir), definir onde a análise mora. Detalhe completo: `docs/2026-08-20-umbler-usuarios-e-analise-backend.md`.
 - 2026-08-20 — **Umbler: subaba Usuários (config de atendente).** O bloco Umbler da Configuração ganhou subnavegação **📡 Canais | 👤 Usuários** (`setUmblerSub`), Canais intacto. **Usuários** cadastra cada atendente (chave = `id_membro_umbler`, que a intake já grava em toda msg/conversa — mas `nome_atendente` vem sempre nulo, por isso o nome é manual). Vincula à pessoa do ERP via dropdown de `rh_funcionarios` (ativos) e a um segmento. Filtros Todos/Sem vínculo ERP/Inativos/**Não vinculados** (membro que respondeu nos últimos 60d e não está no cadastro). Backend novo (migração `umbler_usuarios_config`): tabela `umbler_usuarios`, views `vw_umbler_usuarios_resumo` (cadastro + volume real de msgs) e `vw_umbler_usuarios_nao_vinculados`, RPCs `umbler_classificar_usuario` (upsert, resolve nome_erp) e `umbler_set_usuario_ativo` — mesma postura/grants das RPCs de canal. **Seed** trouxe 10 membros já conhecidos dos mapas por app (`ecom_umbler_vendedor`+`atac_umbler_vendedor`); restam **9 não vinculados** com volume real (6 assistência, 1 ecom, +os 2 atendentes órfãos `aTGhkpoXrJLt7_rY`/`aTG6AL5d9I0UBGsZ` que o BONONI_MASTER arrastava desde 15/06). **Objetivo maior:** esta é a fundação da fase 2 = análise das conversas + qualidade de resposta por atendente (equipe comercial). **Motivo de existir:** sem o de-para membro→pessoa, todo relatório por atendente fica anônimo; e unifica o que estava fragmentado em 3 mapas por app. Verificado: RPC ponta-a-ponta (`ok:true`, resolve nome ERP completo), `rh_funcionarios` legível por anon/authenticated, `node --check` OK. **NÃO deployado ainda** (index.html modificado, sem commit/push) — o front não sobe até o push na main. Mapas por app `atac_`/`ecom_` seguem intactos (nada quebrado); migrar apps p/ a fonte unificada é passo futuro.
 - 2026-08-18 — **Canais Umbler: gestão da lista.** Aba Canais ganhou 4 filtros (Todos/Pendentes/Inativos/Não vinculados). **Remover** (ativo=false) / **Restaurar** (ativo=true) via RPC nova `umbler_set_canal_ativo` (migração `umbler_gestao_lista_canais`). Aba **Não vinculados** = canais com contato nos últimos 60 dias que NÃO estão no de-para (view nova `vw_umbler_canais_nao_vinculados`) + botão "Adicionar à lista" (entra como pendente via `umbler_classificar_canal`). "Todos" agora mostra só ativos. Verificado no ar (anon): round-trip remover/restaurar OK, 0 não-vinculados hoje (rede de segurança). Commit 9b73a62.
