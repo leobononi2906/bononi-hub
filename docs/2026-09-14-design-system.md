@@ -144,6 +144,24 @@ mostrarPortal({ nome: 'Fulano', admin: true, modulos: [] });
 - Banner de saúde e chips de situação conferidos com dados sintéticos (OK / ATRASO / ERRO),
   pra provar que os fundos voltaram: `#e6f4ec` / `#fdf3e3` / `#fdecec`, três tints distintos.
 
+### 8. Modal que estourava a tela (achado pelo Leo depois de publicar)
+O modal "Status da sincronização com o ERP" não tinha altura máxima nem rolagem própria. Com os
+~31 objetos do replicador, o cartão crescia até **2.142px** — cabeçalho e botão de fechar
+saindo pra fora da tela. Valia em qualquer largura; **já era assim antes do design system**, só
+não tinha aparecido.
+
+Duas frentes:
+- **Rede de segurança pra todos os overlays:** `max-height: 88vh` + `overflow-y: auto` no cartão
+  e `overflow-y: auto` no overlay. Onde o modal já resolve isso por `style` inline (o de editar
+  usuário usa 92vh), o inline vence e nada muda.
+- **O modal de sync ganhou a estrutura certa:** flex em coluna, cabeçalho e nota fixos, só a
+  lista rolando. E saiu da regra de celular que solta a altura (`max-height: none`) — aquela
+  regra existe pros modais de **formulário**, pra deixar o botão Salvar alcançável rolando;
+  numa lista longa e só de leitura ela só mandava o X pra fora da tela.
+
+Conferido com 31 objetos sintéticos em 1366×720, 900×560 e 375×812: cartão contido, cabeçalho e
+rodapé dentro da janela, corpo rolando até o fim, X sempre alcançável.
+
 ## Publicação
 Publicado na `main` em 14/09/2026 (deploy Vercel automático) depois da auditoria acima.
 Se algo parecer estranho em produção, o `git revert` do commit devolve o visual antigo inteiro

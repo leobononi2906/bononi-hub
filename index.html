@@ -558,8 +558,27 @@ select.f-inp { cursor: pointer; }
   box-shadow: var(--shadow-overlay);
 }
 
-/* Modais no celular: rolam dentro do overlay e ocupam a largura toda,
-   pra o botão de ação (ex. Salvar) nunca ficar fora da tela. */
+/* Modal nunca passa de 88vh: o que transborda rola DENTRO do cartão, nunca
+   empurrando a página — senão uma lista longa (ex.: os ~31 objetos do
+   replicador) corta o cabeçalho e o botão de fechar pra fora da tela.
+   Modal que já resolve isso no style inline tem prioridade e não é tocado. */
+#sync-modal, #modal-overlay, #modal-minha-senha, #overlay-func,
+#confirm-overlay, #integ-vinc-overlay, #rota-prod-modal {
+  padding: var(--gutter);
+  overflow-y: auto;
+}
+#sync-modal > div, #modal-overlay > div, #modal-minha-senha > div,
+#overlay-func > div, #confirm-overlay > div, #integ-vinc-overlay > div,
+#rota-prod-modal > div {
+  max-height: 88vh;
+  overflow-y: auto;
+  margin: auto;
+}
+
+/* Modais de FORMULÁRIO no celular: rolam dentro do overlay e ocupam a largura
+   toda, pra o botão de ação (ex. Salvar) nunca ficar fora da tela.
+   O modal de status do ERP fica de fora: é lista longa e só de leitura, não tem
+   botão de ação — soltar a altura dele só mandava o X de fechar pra fora da tela. */
 @media (max-width: 640px) {
   #sync-modal, #integ-vinc-overlay, #modal-overlay, #modal-minha-senha, #overlay-func, #confirm-overlay {
     align-items: flex-start !important; overflow-y: auto !important; padding: 12px !important;
@@ -568,9 +587,11 @@ select.f-inp { cursor: pointer; }
   #modal-minha-senha > div, #overlay-func > div, #confirm-overlay > div {
     max-width: 100% !important; margin: auto !important;
   }
-  #sync-modal > div, #modal-overlay > div, #modal-minha-senha > div, #confirm-overlay > div {
+  #modal-overlay > div, #modal-minha-senha > div, #confirm-overlay > div {
     max-height: none !important; padding: 20px !important;
   }
+  #sync-modal { align-items: center !important; }
+  #sync-modal > div { max-height: calc(100vh - 24px) !important; }
   #overlay-func > div { padding: 18px !important; }
   #func-form-grid { grid-template-columns: 1fr !important; }
   #config-panel { margin-top: 24px !important; }
@@ -630,13 +651,13 @@ select.f-inp { cursor: pointer; }
 
     <!-- Modal detalhe sync -->
     <div id="sync-modal" style="display:none;position:fixed;inset:0;z-index:1000;background:var(--scrim);align-items:center;justify-content:center">
-      <div style="background:var(--surface-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;width:100%;max-width:480px;box-shadow:var(--shadow-overlay)">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-          <div style="font-size:var(--fs-16);font-weight:700;color:var(--text)"><i class="ic" data-ic="refresh-cw"></i> Status da sincronização com o ERP</div>
-          <button onclick="fecharSyncDetalhe()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:var(--fs-20);line-height:1">×</button>
+      <div style="background:var(--surface-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);width:100%;max-width:480px;max-height:88vh;margin:auto;display:flex;flex-direction:column;box-shadow:var(--shadow-overlay);overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-5);padding:var(--space-5) var(--space-6);border-bottom:1px solid var(--border-subtle);flex:0 0 auto">
+          <div style="font:var(--type-h2);color:var(--text-strong);display:flex;align-items:center;gap:var(--space-4)"><i class="ic" data-ic="refresh-cw"></i> Status da sincronização com o ERP</div>
+          <button onclick="fecharSyncDetalhe()" class="btn-i" title="Fechar" aria-label="Fechar"><i class="ic" data-ic="x"></i></button>
         </div>
-        <div id="sync-detalhe-content" style="font-size:var(--fs-13);color:var(--muted)">Carregando...</div>
-        <p style="font-size:var(--fs-11);color:var(--dim);margin-top:14px;margin-bottom:0">Replicador próprio no servidor: incremental a cada 10 min, diário 04:00/12:30 e full aos domingos. Monitorado 24/7.</p>
+        <div id="sync-detalhe-content" style="font-size:var(--fs-13);color:var(--muted);padding:var(--space-6);overflow-y:auto;flex:1 1 auto;min-height:0">Carregando…</div>
+        <p style="font:var(--type-small);font-size:var(--fs-11);color:var(--text-muted);padding:var(--space-5) var(--space-6);border-top:1px solid var(--border-subtle);background:var(--surface-sunken);margin:0;flex:0 0 auto">Replicador próprio no servidor: incremental a cada 10 min, diário 04:00/12:30 e full aos domingos. Monitorado 24/7.</p>
       </div>
     </div>
 
