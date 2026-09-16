@@ -1,0 +1,23 @@
+# A Vercel publica o repo INTEIRO, não só o que o app carrega. Sem este
+# arquivo, tudo aqui era baixável por qualquer um:
+#
+#   bononi-hub.vercel.app/docs/STATUS.md                      200
+#   bononi-hub.vercel.app/supabase/migrations/0003_...sql      200
+#   bononi-hub.vercel.app/supabase/config.toml                 200
+#   bononi-hub.vercel.app/CLAUDE.md                            200
+#
+# Não era vazamento de credencial — a chave anon e os nomes das RPCs já
+# saem no index.html por design. O que ficava exposto era o schema e as
+# notas internas: pendências, dívidas, decisões e o nome do banco.
+#
+# O QUE NÃO PODE ENTRAR NESTA LISTA: `index.html`, `ds/` e `assets/`.
+# São o app. Conferido em 16/09/2026 que ninguém busca `docs/` nem
+# `supabase/` em tempo de execução, em nenhum app do grupo, e que nenhum
+# doc linka essas URLs públicas.
+#
+# Isto NÃO apaga nada do git — só deixa de mandar para o deploy.
+
+docs/
+supabase/
+CLAUDE.md
+.claude/
