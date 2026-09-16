@@ -60,9 +60,12 @@ Em produção, já com o **design system da marca** aplicado (14/09, commit `284
 - [x] **Verbos preenchidos** (16/09, migration `0006`), buscados nas trilhas de auditoria e nas
       tabelas de permissão que os apps já têm — não em suposição. Cada célula tem a razão escrita
       na migration. Nenhum app lê verbo ainda: isto é documentação, e ela agora tem lastro.
-- [ ] **`temAcessoStonni()` do `com_stonni` não confere nada** — a função se chama "verifica acesso
-      ao módulo atacado" e o corpo é `return true`. Quem gateia de verdade é `ped_gestores` /
-      `ped_representantes`. Ou o nome muda, ou a função passa a conferir.
+- [x] **`temAcessoStonni()` do `com_stonni` passou a conferir** (16/09). O comentário dizia que
+      `ped_gestores`/`ped_representantes` restringia — **não restringia**: `carregarUsuario` não tem
+      caminho de recusa, e as 53 contas do Auth compartilhado entravam. A porta agora é
+      `stonni`/`atacado`/`admin`, saindo da **mesma lista** que `temPortal()`/`ehInterno()` usam, para
+      porta e nav não voltarem a discordar. **20 passam, 33 barrados** — nenhum dos 33 é gestor ou
+      representante, e nenhum tem ato registrado no app.
 - [ ] **`ped_gestores` é uma matriz de verbos paralela** (`pode_aprovar`, `pode_reprovar`,
       `pode_faturar`, `pode_catalogo`, `pode_config`). É o único lugar do grupo onde verbo é
       aplicado de verdade — vale decidir se ela vira a referência da hierarquia ou se some nela.
