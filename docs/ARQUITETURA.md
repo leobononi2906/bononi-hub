@@ -406,6 +406,7 @@ Lista viva no [`STATUS.md`](STATUS.md). Os itens estruturais:
 |---|---|
 | [`STATUS.md`](STATUS.md) | Estado atual, pendências, dev-log |
 | [`2026-09-14-design-system.md`](2026-09-14-design-system.md) | Como o design system foi aplicado, e as armadilhas do método |
+| [`2026-09-16-hierarquias-de-acesso.md`](2026-09-16-hierarquias-de-acesso.md) | O módulo de hierarquias: fonte × espelho, as duas cadeiras de admin, e as travas |
 | [`UMBLER-FONTE-UNICA.md`](UMBLER-FONTE-UNICA.md) | O projeto de intake único da Umbler |
 | [`2026-08-20-umbler-usuarios-e-analise-backend.md`](2026-08-20-umbler-usuarios-e-analise-backend.md) | Camada canônica `umbler_msg` e o de-para de atendente |
 | [`2026-08-25-umbler-intake-hardening.md`](2026-08-25-umbler-intake-hardening.md) | Endurecimento do webhook |

@@ -706,24 +706,51 @@ select.f-inp { cursor: pointer; }
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
         <div>
           <div style="font:var(--type-overline);letter-spacing:var(--ls-caps);text-transform:uppercase;color:var(--text-accent);margin-bottom:4px">Administração</div>
-          <div style="font-family:var(--font-display);font-size:var(--fs-24);font-weight:800">Gerenciar Usuários</div>
+          <div style="font-family:var(--font-display);font-size:var(--fs-24);font-weight:800" id="admin-titulo">Gerenciar Usuários</div>
+          <div style="font-size:var(--fs-13);color:var(--muted);margin-top:4px" id="admin-subtitulo">Quem entra em cada aplicação do grupo.</div>
         </div>
-        <button onclick="abrirModalNovoUsuario()"
+        <button id="admin-btn-acao" onclick="abrirModalNovoUsuario()"
           style="height:38px;padding:0 16px;background:var(--action-primary);border:none;border-radius:var(--radius-md);color:var(--text-inverse);font-size:var(--fs-13);font-weight:700;font-family:var(--font-ui);cursor:pointer">
           + Novo Usuário
         </button>
       </div>
-      <details id="admins-por-app-box" style="margin-bottom:16px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--surface);overflow:hidden">
-        <summary style="cursor:pointer;padding:12px 16px;font-size:var(--fs-13);font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px">
-          <i class="ic" data-ic="shield-check"></i> Admins por aplicação <span style="font-size:var(--fs-11);font-weight:600;color:var(--muted)">— quem administra cada app</span>
-        </summary>
-        <div id="admins-por-app" style="padding:4px 16px 16px"></div>
-      </details>
-      <div id="admin-grupos" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"></div>
-      <input id="admin-busca" type="text" placeholder="Buscar por nome ou e-mail…" oninput="filtrarUsuarios()"
-        style="width:100%;height:40px;background:var(--input-bg);border:1px solid var(--border);border-radius:var(--radius-md);padding:0 14px;font-size:var(--fs-13);color:var(--text);font-family:var(--font-ui);outline:none;margin-bottom:16px" />
-      <div id="admin-lista" style="display:grid;gap:10px">
-        <div style="text-align:center;padding:32px;color:var(--muted);font-size:var(--fs-13)">Carregando usuários...</div>
+
+      <div class="seg" style="margin-bottom:18px">
+        <button id="admin-sub-btn-pessoas" onclick="setAdminSub('pessoas')"><i class="ic" data-ic="users"></i> Pessoas</button>
+        <button id="admin-sub-btn-hier" onclick="setAdminSub('hier')"><i class="ic" data-ic="shield-check"></i> Hierarquias</button>
+      </div>
+
+      <!-- SUB: PESSOAS -->
+      <div id="admin-sub-pessoas">
+        <details id="admins-por-app-box" style="margin-bottom:16px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--surface);overflow:hidden">
+          <summary style="cursor:pointer;padding:12px 16px;font-size:var(--fs-13);font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px">
+            <i class="ic" data-ic="shield-check"></i> Admins por aplicação <span style="font-size:var(--fs-11);font-weight:600;color:var(--muted)">— quem administra cada app</span>
+          </summary>
+          <div id="admins-por-app" style="padding:4px 16px 16px"></div>
+        </details>
+        <div id="admin-grupos" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"></div>
+        <input id="admin-busca" type="text" placeholder="Buscar por nome ou e-mail…" oninput="filtrarUsuarios()"
+          style="width:100%;height:40px;background:var(--input-bg);border:1px solid var(--border);border-radius:var(--radius-md);padding:0 14px;font-size:var(--fs-13);color:var(--text);font-family:var(--font-ui);outline:none;margin-bottom:16px" />
+        <div id="admin-lista" style="display:grid;gap:10px">
+          <div style="text-align:center;padding:32px;color:var(--muted);font-size:var(--fs-13)">Carregando usuários...</div>
+        </div>
+      </div>
+
+      <!-- SUB: HIERARQUIAS -->
+      <div id="admin-sub-hier" style="display:none">
+        <div style="margin-bottom:16px;padding:12px 16px;border-radius:var(--radius-lg);background:var(--status-warn-bg);border:1px solid var(--status-warn-bg);color:var(--status-warn-text);font-size:var(--fs-12);line-height:1.5;display:flex;gap:10px;align-items:flex-start">
+          <i class="ic" data-ic="triangle-alert" style="flex-shrink:0;margin-top:2px"></i>
+          <span>A hierarquia decide o que a pessoa <b>vê</b>. Ela vira segurança de verdade quando o app bate no banco com o token do usuário e a tabela tem política própria — até lá, isto é organização e registro de quem liberou o quê.</span>
+        </div>
+        <div id="hier-lista" style="display:grid;gap:10px">
+          <div style="text-align:center;padding:32px;color:var(--muted);font-size:var(--fs-13)">Carregando hierarquias...</div>
+        </div>
+        <details style="margin-top:20px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--surface);overflow:hidden">
+          <summary style="cursor:pointer;padding:12px 16px;font-size:var(--fs-13);font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px" onclick="setTimeout(carregarHierLog,50)">
+            <i class="ic" data-ic="file-text"></i> Histórico <span style="font-size:var(--fs-11);font-weight:600;color:var(--muted)">— quem mudou o quê, e quando</span>
+          </summary>
+          <div id="hier-log" style="padding:4px 16px 16px;font-size:var(--fs-12)"></div>
+        </details>
       </div>
     </div>
 
@@ -1034,8 +1061,17 @@ select.f-inp { cursor: pointer; }
         style="width:100%;height:42px;background:var(--input-bg);border:1px solid var(--border);border-radius:var(--radius-md);padding:0 14px;font-size:var(--fs-14);font-family:var(--font-ui);color:var(--text);outline:none;margin-bottom:16px" />
     </div>
 
+    <div id="modal-hier-wrap" style="margin-bottom:16px">
+      <label style="font-size:var(--fs-11);font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px">Hierarquia</label>
+      <select id="modal-hier" onchange="aoTrocarHierarquiaNoModal()"
+        style="width:100%;height:42px;background:var(--input-bg);border:1px solid var(--border);border-radius:var(--radius-md);padding:0 12px;font-size:var(--fs-14);font-family:var(--font-ui);color:var(--text);outline:none">
+        <option value="">— sem hierarquia (acesso manual) —</option>
+      </select>
+      <div id="modal-hier-desc" style="font-size:var(--fs-11);color:var(--muted);margin-top:6px;line-height:1.5"></div>
+    </div>
+
     <label style="font-size:var(--fs-11);font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px">Módulos de Acesso</label>
-    <div style="font-size:var(--fs-11);color:var(--muted);margin-bottom:10px">Marque o acesso; o <span style="color:var(--status-ok-text);font-weight:700"><i class="ic ic-sm" data-ic="shield-check"></i> admin</span> libera a administração daquele app (só disponível se tiver o acesso).</div>
+    <div id="modal-modulos-ajuda" style="font-size:var(--fs-11);color:var(--muted);margin-bottom:10px">Marque o acesso; o <span style="color:var(--status-ok-text);font-weight:700"><i class="ic ic-sm" data-ic="shield-check"></i> admin</span> libera a administração daquele app (só disponível se tiver o acesso).</div>
     <div style="display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:20px" id="modal-modulos"></div>
 
     <label style="display:flex;align-items:center;gap:8px;margin-bottom:24px;cursor:pointer;font-size:var(--fs-13)">
@@ -1063,6 +1099,72 @@ select.f-inp { cursor: pointer; }
     <button id="modal-btn-toggle-senha" onclick="toggleResetSenha()" style="display:none;width:100%;height:36px;margin-top:8px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--muted);font-size:var(--fs-12);font-family:var(--font-ui);cursor:pointer">
       Alterar senha
     </button>
+  </div>
+</div>
+
+<!-- MODAL: EDITOR DE HIERARQUIA -->
+<div id="hier-overlay" style="display:none;position:fixed;inset:0;background:var(--scrim);z-index:500;align-items:center;justify-content:center;padding:16px;overflow-y:auto">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:clamp(18px,5vw,32px);width:100%;max-width:820px;max-height:92vh;overflow-y:auto;box-shadow:var(--shadow-overlay)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+      <div style="font-family:var(--font-display);font-size:var(--fs-18);font-weight:800" id="hier-modal-titulo">Nova hierarquia</div>
+      <button onclick="fecharHierModal()" style="background:var(--surface2);border:none;border-radius:var(--radius-md);width:32px;height:32px;cursor:pointer;color:var(--muted)"><i class="ic" data-ic="x"></i></button>
+    </div>
+
+    <div id="hier-erro" style="display:none;background:var(--status-crit-bg);border:1px solid var(--bnn-red-100);color:var(--destructive);border-radius:var(--radius-md);padding:10px 14px;font-size:var(--fs-13);margin-bottom:16px"></div>
+
+    <!-- Editar hierarquia mexe em todo mundo que a tem. Tem de estar na cara. -->
+    <div id="hier-afetados" style="display:none;background:var(--status-warn-bg);border:1px solid var(--status-warn-bg);color:var(--status-warn-text);border-radius:var(--radius-md);padding:10px 14px;font-size:var(--fs-13);margin-bottom:16px"></div>
+
+    <input type="hidden" id="hier-id" />
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div>
+        <label style="font-size:var(--fs-11);font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px">Nome</label>
+        <input id="hier-nome" type="text" placeholder="Comprador júnior"
+          style="width:100%;height:42px;background:var(--input-bg);border:1px solid var(--border);border-radius:var(--radius-md);padding:0 14px;font-size:var(--fs-14);font-family:var(--font-ui);color:var(--text);outline:none" />
+      </div>
+      <div>
+        <label style="font-size:var(--fs-11);font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px">Empresas <span style="text-transform:none;letter-spacing:0;font-weight:500">(vazio = todas)</span></label>
+        <input id="hier-empresas" type="text" placeholder="1, 2"
+          style="width:100%;height:42px;background:var(--input-bg);border:1px solid var(--border);border-radius:var(--radius-md);padding:0 14px;font-size:var(--fs-14);font-family:var(--font-ui);color:var(--text);outline:none" />
+      </div>
+    </div>
+
+    <label style="font-size:var(--fs-11);font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px">O que essa hierarquia faz</label>
+    <div style="font-size:var(--fs-11);color:var(--muted);margin-bottom:6px">Em linguagem de negócio, não de sistema. Sem isto a lista vira <i>perfil_1, perfil_2</i> e ninguém sabe a quem dar.</div>
+    <textarea id="hier-descricao" rows="2" placeholder="Lança pedido de compra e confere recebimento. Não aprova pedido acima de R$ 5 mil."
+      style="width:100%;background:var(--input-bg);border:1px solid var(--border);border-radius:var(--radius-md);padding:10px 14px;font-size:var(--fs-14);font-family:var(--font-ui);color:var(--text);outline:none;resize:vertical;margin-bottom:20px"></textarea>
+
+    <label style="font-size:var(--fs-11);font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px">Módulos e o que pode fazer em cada um</label>
+    <div style="font-size:var(--fs-11);color:var(--muted);margin-bottom:10px">Marque <b>Acessa</b> para o módulo entrar na hierarquia. <b>Admin</b> dá a administração daquele app — e não dá acesso a esta tela: quem administra um módulo não define quem entra nele.</div>
+    <div style="overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius-md);margin-bottom:20px">
+      <table style="width:100%;border-collapse:collapse;font-size:var(--fs-12)">
+        <thead>
+          <tr style="background:var(--surface-sunken);text-align:center">
+            <th style="text-align:left;padding:9px 12px;font-weight:700;white-space:nowrap">Módulo</th>
+            <th style="padding:9px 6px;font-weight:700">Acessa</th>
+            <th style="padding:9px 6px;font-weight:700">Incluir</th>
+            <th style="padding:9px 6px;font-weight:700">Editar</th>
+            <th style="padding:9px 6px;font-weight:700">Excluir</th>
+            <th style="padding:9px 6px;font-weight:700">Aprovar</th>
+            <th style="padding:9px 6px;font-weight:700">Exportar</th>
+            <th style="padding:9px 10px 9px 6px;font-weight:700;color:var(--status-ok-text)">Admin</th>
+          </tr>
+        </thead>
+        <tbody id="hier-matriz"></tbody>
+      </table>
+    </div>
+
+    <div style="display:flex;gap:10px">
+      <button id="hier-btn-salvar" onclick="salvarHierarquia()"
+        style="flex:1;height:44px;background:var(--action-primary);border:none;border-radius:var(--radius-md);color:var(--text-inverse);font-size:var(--fs-14);font-weight:700;font-family:var(--font-display);cursor:pointer">
+        Salvar
+      </button>
+      <button onclick="fecharHierModal()"
+        style="height:44px;padding:0 20px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--muted);font-size:var(--fs-13);font-family:var(--font-ui);cursor:pointer">
+        Cancelar
+      </button>
+    </div>
   </div>
 </div>
 
@@ -1191,6 +1293,32 @@ const APPS = [
   },
 ];
 
+// ── Registro único de módulos ──
+// Fonte única da chave de acesso. Até 16/09/2026 existiam TRÊS listas aqui
+// (APPS.acesso, MODULOS_LABELS e _MODULOS_BACKOFFICE) e elas já tinham
+// divergido: `varejo_admin` — que é o que o app de Vendas confere de fato —
+// não estava em nenhuma das duas primeiras. Isso importa muito agora: a
+// matriz da hierarquia grava `modulos` por cima do que existia, então
+// qualquer chave que a matriz não conheça vira acesso REVOGADO em silêncio.
+//
+// Regra: o que tem app no APPS herda o nome dele; o que não tem (módulo
+// interno de app, ou app ainda sem cartão no Hub) vem em EXTRAS, com o
+// motivo escrito.
+const MODULOS_EXTRAS = {
+  atacado:       { nome: 'Atacado',          nota: 'CRM Atacado (com_stonni confere esta chave)' },
+  operacoes:     { nome: 'Operações',        nota: 'sem cartão no Hub' },
+  varejo_admin:  { nome: 'Vendas — administrador', nota: 'bononi-vendas: vê todos os vendedores' },
+};
+const MODULOS = (() => {
+  const m = {};
+  APPS.forEach(a => { m[a.acesso] = { nome: a.nome, app: a.id, nota: '' }; });
+  Object.entries(MODULOS_EXTRAS).forEach(([k, v]) => {
+    if (!m[k]) m[k] = { nome: v.nome, app: null, nota: v.nota };
+  });
+  return m;
+})();
+const MODULOS_IDS = Object.keys(MODULOS);
+
 function saudacao() {
   const h = new Date().getHours();
   if (h < 12) return 'Bom dia';
@@ -1234,6 +1362,8 @@ function renderApps(usuario) {
 function mostrarPortal(usuario) {
   document.getElementById('auth-loading').style.display = 'none';
   document.getElementById('login-wrap').classList.remove('show');
+
+  _usuarioAtual = usuario;   // quem está logado (id, email, nome, admin, modulos)
 
   const nome = usuario.nome;
   document.getElementById('user-avatar').textContent  = nome.charAt(0).toUpperCase();
@@ -1330,6 +1460,8 @@ async function fazerLogin() {
 
   const meta = data.session.user.user_metadata || {};
   mostrarPortal({
+    id:      data.session.user.id,
+    email:   data.session.user.email,
     nome:    meta.nome || email.split('@')[0],
     admin:   meta.admin === true,
     modulos: meta.modulos || [],
@@ -1361,6 +1493,7 @@ function toggleAdmin() {
     appsGrid.style.display = 'none';
     sectionLabel.style.display = 'none';
     btn.innerHTML = ic('arrow-left') + '<span class="lbl">Voltar</span>';
+    setAdminSub('pessoas');
     carregarUsuarios();
   } else {
     panel.style.display = 'none';
@@ -2813,7 +2946,9 @@ async function carregarUsuarios() {
     }
     // Guardar todos, já classificados por grupo (interno / representante / autorizada)
     window._todosUsuarios = (Array.isArray(data) ? data : []).map(u => ({ ...u, _grupo: classificarUsuario(u) }));
+    window._nAdminsGlobais = window._todosUsuarios.filter(u => u.admin).length;
     if (!window._grupoAtual) window._grupoAtual = 'interno';
+    await carregarHierarquias();   // preenche _hierarquias e _atribuicoes
     renderGruposChips();
     renderAdminsPorApp();
     filtrarUsuarios();
@@ -2925,6 +3060,12 @@ function renderUsuarios(data, grupo) {
       const tg = _TAG_GRUPO[u._grupo] || _TAG_GRUPO.interno;
       const tagHtml = (grupo === 'todos')
         ? `<span style="background:${tg.bg};color:${tg.fg};font-size:var(--fs-11);font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:3px 9px;border-radius:var(--radius-sm)">${tg.txt}</span>` : '';
+      // Quem tem hierarquia mostra a hierarquia; quem não tem fica "manual",
+      // que é o que ainda falta migrar — some da tela é como o legado vira eterno.
+      const at = (window._atribuicoes || {})[u.id];
+      const hierHtml = at
+        ? `<span title="${(at.hierarquia_descricao || '').replace(/"/g, '&quot;')}" style="background:var(--surface-sunken);color:var(--text-body);font-size:var(--fs-11);font-weight:700;padding:3px 9px;border-radius:var(--radius-sm);border:1px solid var(--border);display:inline-flex;align-items:center;gap:5px">${ic('shield-check','ic-sm')} ${at.hierarquia}</span>`
+        : `<span title="Acesso marcado à mão, sem hierarquia" style="color:var(--text-muted);font-size:var(--fs-11);font-weight:600;padding:3px 9px;border-radius:var(--radius-sm);border:1px dashed var(--border)">manual</span>`;
       return `
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;box-shadow:var(--shadow-card)">
           <div style="display:flex;align-items:center;gap:12px;min-width:0">
@@ -2938,6 +3079,7 @@ function renderUsuarios(data, grupo) {
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
             ${tagHtml}
+            ${hierHtml}
             ${u.admin ? `<span style="background:var(--status-info-bg);color:var(--status-info-text);font-size:var(--fs-11);font-weight:700;padding:3px 10px;border-radius:var(--radius-sm);border:1px solid var(--status-info-bg)">ADMIN GLOBAL</span>`
             : modulos.length ? modulos.map(m => {
                 const isAdm = Array.isArray(u.admin_modulos) && u.admin_modulos.includes(m);
@@ -2967,13 +3109,15 @@ function renderUsuarios(data, grupo) {
     }).join('');
 }
 
-const MODULOS_LABELS = {
-  financeiro: 'Financeiro', compras: 'Compras', assistencia: 'Assistência',
-  cobranca: 'Cobrança', ecommerce: 'E-commerce', atacado: 'Atacado',
-  frete: 'Frete', loja: 'Loja', stonni: 'Comercial Stonni', operacoes: 'Operações', expedicao: 'Expedição', 'rede-autorizada': 'Rede Autorizada', varejo: 'Consulta Vendas'
-};
+// Derivado do registro único MODULOS (ver junto ao APPS). Não redigite a
+// lista aqui: era exatamente isso que fazia as três listas divergirem.
+const MODULOS_LABELS = Object.fromEntries(MODULOS_IDS.map(m => [m, MODULOS[m].nome]));
 
-function renderCheckboxes(modulosMarcados = [], adminMarcados = []) {
+// `bloquear` = a pessoa tem hierarquia, então o acesso dela é DERIVADO.
+// Os quadradinhos continuam visíveis (mostram o que a hierarquia deu) mas
+// não se editam aqui: duas fontes escrevendo o mesmo campo é como ninguém
+// mais sabe qual valeu.
+function renderCheckboxes(modulosMarcados = [], adminMarcados = [], bloquear = false) {
   const div = document.getElementById('modal-modulos');
   div.innerHTML = '';
   Object.entries(MODULOS_LABELS).forEach(([m, label]) => {
@@ -3011,6 +3155,12 @@ function renderCheckboxes(modulosMarcados = [], adminMarcados = []) {
       admLbl.style.opacity = cb.checked ? '1' : '.4';
     });
 
+    if (bloquear) {
+      cb.disabled = true; adm.disabled = true;
+      lbl.style.cursor = 'default'; admLbl.style.cursor = 'default';
+      row.style.opacity = '.75';
+    }
+
     row.appendChild(lbl);
     row.appendChild(admLbl);
     div.appendChild(row);
@@ -3029,6 +3179,7 @@ function abrirModalNovoUsuario() {
   document.getElementById('modal-btn-toggle-senha').style.display = 'none';
   document.getElementById('modal-admin').checked = false;
   document.getElementById('modal-erro').style.display = 'none';
+  popularSelectHierarquia('');
   renderCheckboxes([], []);
   document.getElementById('modal-overlay').style.display = 'flex';
 }
@@ -3047,7 +3198,11 @@ function editarUsuario(u) {
   document.getElementById('modal-erro').style.display = 'none';
   const modulos = Array.isArray(u.modulos) ? u.modulos : [];
   const adminModulos = Array.isArray(u.admin_modulos) ? u.admin_modulos : [];
-  renderCheckboxes(modulos, adminModulos);
+  const atrib = (window._atribuicoes || {})[u.id];
+  _hierOriginal = atrib ? String(atrib.hierarquia_id) : '';
+  popularSelectHierarquia(_hierOriginal);
+  renderCheckboxes(modulos, adminModulos, !!atrib);
+  atualizarAvisoHierarquia();
   document.getElementById('modal-overlay').style.display = 'flex';
 }
 
@@ -3061,10 +3216,13 @@ async function salvarUsuario() {
   const email  = document.getElementById('modal-email').value.trim();
   const senha  = document.getElementById('modal-senha').value;
   const isAdmin = document.getElementById('modal-admin').checked;
-  const modulos = [...document.querySelectorAll('#modal-modulos input[data-modulo]')]
+  const hierSel = document.getElementById('modal-hier').value;   // '' = manual
+  let modulos = [...document.querySelectorAll('#modal-modulos input[data-modulo]')]
     .filter(cb => cb.checked).map(cb => cb.dataset.modulo);
-  const adminModulos = [...document.querySelectorAll('#modal-modulos input[data-adm-modulo]')]
-    .filter(cb => cb.checked && !cb.disabled && modulos.includes(cb.dataset.admModulo))
+  // Sem o `!cb.disabled`: quando a pessoa tem hierarquia os quadradinhos vêm
+  // travados, e a condição antiga descartava o admin de módulo em silêncio.
+  let adminModulos = [...document.querySelectorAll('#modal-modulos input[data-adm-modulo]')]
+    .filter(cb => cb.checked && modulos.includes(cb.dataset.admModulo))
     .map(cb => cb.dataset.admModulo);
   const erro = document.getElementById('modal-erro');
   const btn  = document.getElementById('modal-btn-salvar');
@@ -3072,9 +3230,31 @@ async function salvarUsuario() {
   erro.style.display = 'none';
   if (!nome || !email) { erro.textContent = 'Nome e e-mail são obrigatórios.'; erro.style.display = 'block'; return; }
 
+  // Com hierarquia, o acesso é DERIVADO dela — nunca do que está na tela.
+  // Mandar o valor calculado aqui deixa o metadata certo independente de a
+  // RPC admin_atualizar_usuario mesclar ou substituir o objeto inteiro.
+  if (hierSel) {
+    const h = (window._hierarquias || []).find(x => String(x.id) === String(hierSel));
+    if (!h) { erro.textContent = 'Hierarquia não encontrada. Recarregue a tela.'; erro.style.display = 'block'; return; }
+    modulos      = (h.modulos || []).filter(m => m.visualizar).map(m => m.modulo);
+    adminModulos = (h.modulos || []).filter(m => m.admin_modulo).map(m => m.modulo);
+  }
+
+  // Não deixar o último admin global sair: sem ninguém para consertar, o
+  // conserto vira chamado no suporte do Supabase.
+  if (uid && !isAdmin) {
+    const antes = (window._todosUsuarios || []).find(u => u.id === uid);
+    if (antes && antes.admin && (window._nAdminsGlobais || 0) <= 1) {
+      erro.textContent = 'Este é o último administrador global. Promova outra pessoa antes de tirar o acesso dele.';
+      erro.style.display = 'block'; return;
+    }
+  }
+
   btn.textContent = 'Salvando...'; btn.disabled = true;
 
   try {
+    let alvo = uid;
+
     if (!uid) {
       // Criar novo usuário via Edge Function admin-usuarios
       if (!senha || senha.length < 6) throw new Error('Senha obrigatória (mínimo 6 caracteres)');
@@ -3090,6 +3270,12 @@ async function salvarUsuario() {
       });
       const result = await resp.json();
       if (!resp.ok || result.error) throw new Error(result.error || 'Erro ao criar usuário');
+      // A Edge Function não devolve o id; acha pelo e-mail para poder vincular.
+      if (hierSel) {
+        const lista = await rpcGeral('admin_listar_usuarios', {}, true);
+        alvo = (Array.isArray(lista) ? lista : []).find(u => (u.email || '').toLowerCase() === email.toLowerCase())?.id || '';
+        if (!alvo) throw new Error('Usuário criado, mas não foi possível vincular a hierarquia. Edite-o e escolha a hierarquia.');
+      }
     } else {
       // Atualizar metadata via RPC
       const { data: { session: sess } } = await sb.auth.getSession();
@@ -3104,10 +3290,17 @@ async function salvarUsuario() {
       });
       if (!respUpd.ok) { const e = await respUpd.json(); throw new Error(e.message || 'Erro ao salvar'); }
     }
+
+    // Hierarquia por último: ela recalcula o espelho e fecha a conta.
+    if (alvo && String(hierSel) !== String(_hierOriginal || '')) {
+      if (hierSel) await rpcGeral('geral_atribuir_hierarquia', { p_user: alvo, p_hier: Number(hierSel) });
+      else         await rpcGeral('geral_remover_hierarquia',  { p_user: alvo });
+    }
+
     fecharModal();
     carregarUsuarios();
   } catch(e) {
-    erro.textContent = e.message.includes('createUser') || e.message.includes('admin')
+    erro.textContent = e.message.includes('createUser')
       ? 'Para criar usuários, use: Supabase → Auth → Add User. Depois edite os acessos aqui.'
       : e.message;
     erro.style.display = 'block';
@@ -3115,6 +3308,356 @@ async function salvarUsuario() {
     btn.textContent = 'Salvar'; btn.disabled = false;
   }
 }
+
+// ══════════════════════════════════════════════════════════════════
+// HIERARQUIAS DE ACESSO
+// ══════════════════════════════════════════════════════════════════
+// A hierarquia é a FONTE; o user_metadata é ESPELHO derivado dela. Quem
+// recalcula o espelho é o banco (geral_recalcular_espelho), não esta tela —
+// assim os outros apps continuam lendo meta.modulos sem serem reescritos.
+//
+// Esta tela é só do ADMIN GLOBAL. O admin de MÓDULO não entra: quem opera
+// dentro de um módulo não define quem entra nele, senão pode se promover e
+// o registro diria que foi legítimo. Cada app tem, em vez disso, a tela
+// somente-leitura "quem tem acesso aqui" (RPC geral_quem_tem_acesso).
+
+let _hierOriginal = '';                 // hierarquia da pessoa ao abrir o modal
+const ACOES_HIER = ['incluir', 'editar', 'excluir', 'aprovar', 'exportar'];
+
+// Toda escrita deste módulo passa por aqui. Erro de RPC volta como HTTP 4xx
+// com a mensagem do `raise exception` — mostrar essa mensagem é o que faz
+// "só o admin global pode" aparecer na tela em vez de virar erro mudo.
+async function rpcGeral(fn, body = {}, silencioso = false) {
+  const { data: { session } } = await sb.auth.getSession();
+  const resp = await fetch(SUPA_URL + '/rest/v1/rpc/' + fn, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer ' + (session?.access_token || SUPA_KEY),
+    },
+    body: JSON.stringify(body),
+  });
+  const txt = await resp.text();
+  let json = null;
+  try { json = txt ? JSON.parse(txt) : null; } catch { /* resposta não-JSON */ }
+  if (!resp.ok) throw new Error(json?.message || json?.error || ('HTTP ' + resp.status));
+  // As funções de leitura devolvem {erro:'sem permissao'} em vez de estourar.
+  if (!silencioso && json && json.erro) throw new Error(json.erro);
+  return json;
+}
+
+function setAdminSub(sub) {
+  const titulo = document.getElementById('admin-titulo');
+  const subtit = document.getElementById('admin-subtitulo');
+  const btnAcao = document.getElementById('admin-btn-acao');
+  ['pessoas', 'hier'].forEach(k => {
+    document.getElementById('admin-sub-' + k).style.display = sub === k ? '' : 'none';
+    document.getElementById('admin-sub-btn-' + k).classList.toggle('on', k === sub);
+  });
+  if (sub === 'hier') {
+    titulo.textContent = 'Hierarquias de acesso';
+    subtit.textContent = 'O papel diz o que a pessoa faz, quais módulos acessa e o que pode fazer em cada um.';
+    btnAcao.textContent = '+ Nova hierarquia';
+    btnAcao.setAttribute('onclick', 'abrirHierModal(null)');
+    carregarHierarquias().then(renderHierarquias);
+  } else {
+    titulo.textContent = 'Gerenciar Usuários';
+    subtit.textContent = 'Quem entra em cada aplicação do grupo.';
+    btnAcao.textContent = '+ Novo Usuário';
+    btnAcao.setAttribute('onclick', 'abrirModalNovoUsuario()');
+  }
+}
+
+// Carrega hierarquias + quem tem qual. Falha silenciosa de propósito: se as
+// tabelas ainda não foram criadas no banco, a tela de usuários continua
+// funcionando como antes em vez de ficar em branco.
+async function carregarHierarquias() {
+  try {
+    const [hs, ats] = await Promise.all([
+      rpcGeral('geral_listar_hierarquias', { p_incluir_arquivadas: true }),
+      rpcGeral('geral_listar_atribuicoes'),
+    ]);
+    window._hierarquias = Array.isArray(hs) ? hs : [];
+    const porId = Object.fromEntries(window._hierarquias.map(h => [String(h.id), h]));
+    window._atribuicoes = Object.fromEntries((Array.isArray(ats) ? ats : []).map(a => [
+      a.user_id,
+      { ...a, hierarquia_descricao: porId[String(a.hierarquia_id)]?.descricao || '' },
+    ]));
+    window._hierIndisponivel = false;
+  } catch (e) {
+    window._hierarquias = window._hierarquias || [];
+    window._atribuicoes = window._atribuicoes || {};
+    window._hierIndisponivel = e.message;
+    console.warn('hierarquias indisponíveis:', e.message);
+  }
+}
+
+function renderHierarquias() {
+  const box = document.getElementById('hier-lista');
+  if (!box) return;
+
+  if (window._hierIndisponivel) {
+    box.innerHTML = `<div style="text-align:center;padding:32px;color:var(--status-crit-text);font-size:var(--fs-13)">
+      Hierarquias indisponíveis: ${window._hierIndisponivel}<br>
+      <span style="color:var(--muted);font-size:var(--fs-12)">Se a migration 0003 ainda não foi aplicada neste banco, é isso.</span></div>`;
+    return;
+  }
+  const hs = window._hierarquias || [];
+  if (!hs.length) {
+    box.innerHTML = `<div style="text-align:center;padding:32px;color:var(--muted);font-size:var(--fs-13)">
+      Nenhuma hierarquia ainda.<br>
+      <span style="font-size:var(--fs-12)">Comece pela pergunta que destrava: <i>quem faz esse trabalho hoje, e o que essa pessoa precisa conseguir fazer?</i></span></div>`;
+    return;
+  }
+
+  box.innerHTML = hs.map(h => {
+    const mods = (h.modulos || []).filter(m => m.visualizar);
+    const chips = mods.length ? mods.map(m => {
+      const nome = (MODULOS[m.modulo] || {}).nome || m.modulo;
+      const acoes = ACOES_HIER.filter(a => m[a]);
+      const titulo = acoes.length ? 'Pode: ' + acoes.join(', ') : 'Só visualizar';
+      return m.admin_modulo
+        ? `<span title="Administra este app — ${titulo}" style="background:var(--status-ok-bg);color:var(--status-ok-text);font-size:var(--fs-11);font-weight:700;padding:3px 8px;border-radius:var(--radius-sm);border:1px solid var(--status-ok-bg)">${nome}</span>`
+        : `<span title="${titulo}" style="background:var(--bg2);color:var(--muted);font-size:var(--fs-11);padding:3px 8px;border-radius:var(--radius-sm);border:1px solid var(--border)">${nome}</span>`;
+    }).join('') : `<span style="color:var(--muted);font-size:var(--fs-12)">Nenhum módulo</span>`;
+
+    const escopo = (h.empresas || []).length
+      ? `<span title="Escopo: empresas ${h.empresas.join(', ')}" style="font-size:var(--fs-11);color:var(--muted)">empresas ${h.empresas.join(', ')}</span>`
+      : `<span title="Sem recorte de empresa: vê o grupo inteiro" style="font-size:var(--fs-11);color:var(--muted)">todas as empresas</span>`;
+
+    return `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 18px;box-shadow:var(--shadow-card);${h.arquivada ? 'opacity:.6' : ''}">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap">
+          <div style="min-width:0;flex:1">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px">
+              <span style="font-weight:700;font-size:var(--fs-14)">${h.nome}</span>
+              ${h.arquivada ? `<span style="background:var(--surface-sunken);color:var(--text-muted);font-size:var(--fs-11);font-weight:700;padding:2px 8px;border-radius:var(--radius-sm)">ARQUIVADA</span>` : ''}
+              <span style="background:var(--status-info-bg);color:var(--status-info-text);font-size:var(--fs-11);font-weight:700;padding:2px 8px;border-radius:var(--radius-sm)">${h.pessoas} ${h.pessoas === 1 ? 'pessoa' : 'pessoas'}</span>
+              ${escopo}
+            </div>
+            <div style="font-size:var(--fs-12);color:var(--muted);line-height:1.5;margin-bottom:9px">${h.descricao}</div>
+            <div style="display:flex;gap:5px;flex-wrap:wrap">${chips}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+            <button onclick="abrirHierModal(${h.id})"
+              style="height:32px;padding:0 14px;background:var(--status-info-bg);border:1px solid var(--status-info-bg);border-radius:var(--radius-md);color:var(--status-info-text);font-size:var(--fs-12);font-family:var(--font-ui);cursor:pointer">Editar</button>
+            <button onclick="arquivarHierarquia(${h.id}, ${h.arquivada ? 'false' : 'true'})"
+              title="${h.arquivada ? 'Reativar' : 'Arquivar — hierarquia em uso não se apaga'}"
+              style="height:32px;padding:0 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--muted);font-size:var(--fs-12);font-family:var(--font-ui);cursor:pointer">${h.arquivada ? 'Reativar' : 'Arquivar'}</button>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+  hydrateIcons(box);
+}
+
+// ── Editor ──
+
+function renderMatrizHier(modulos = []) {
+  const tb = document.getElementById('hier-matriz');
+  const porModulo = Object.fromEntries(modulos.map(m => [m.modulo, m]));
+  tb.innerHTML = MODULOS_IDS.map(id => {
+    const m = porModulo[id] || {};
+    const tem = !!m.visualizar;
+    const nota = MODULOS[id].nota ? ` <span style="color:var(--text-muted);font-weight:400">— ${MODULOS[id].nota}</span>` : '';
+    const chk = (campo, marcado, extra) =>
+      `<td style="text-align:center;padding:7px 6px"><input type="checkbox" data-hm="${id}" data-campo="${campo}" ${marcado ? 'checked' : ''} ${tem ? '' : 'disabled'} style="width:15px;height:15px;accent-color:${extra || 'var(--blue)'}"></td>`;
+    return `<tr style="border-top:1px solid var(--border)">
+      <td style="padding:7px 12px;font-weight:600;white-space:nowrap">${MODULOS[id].nome}${nota}</td>
+      <td style="text-align:center;padding:7px 6px"><input type="checkbox" data-hm="${id}" data-campo="visualizar" ${tem ? 'checked' : ''} onchange="aoTrocarAcessoModulo('${id}')" style="width:16px;height:16px;accent-color:var(--blue)"></td>
+      ${ACOES_HIER.map(a => chk(a, !!m[a])).join('')}
+      ${chk('admin_modulo', !!m.admin_modulo, 'var(--status-ok-text)')}
+    </tr>`;
+  }).join('');
+}
+
+// Ação sem acesso não existe: destravar as colunas junto evita salvar uma
+// linha que diz "pode aprovar" num módulo que a pessoa nem enxerga.
+function aoTrocarAcessoModulo(id) {
+  const base = document.querySelector(`#hier-matriz input[data-hm="${id}"][data-campo="visualizar"]`);
+  document.querySelectorAll(`#hier-matriz input[data-hm="${id}"]`).forEach(cb => {
+    if (cb.dataset.campo === 'visualizar') return;
+    cb.disabled = !base.checked;
+    if (!base.checked) cb.checked = false;
+  });
+}
+
+function abrirHierModal(id) {
+  const h = id ? (window._hierarquias || []).find(x => String(x.id) === String(id)) : null;
+  document.getElementById('hier-modal-titulo').textContent = h ? 'Editar hierarquia' : 'Nova hierarquia';
+  document.getElementById('hier-id').value = h ? h.id : '';
+  document.getElementById('hier-nome').value = h ? h.nome : '';
+  document.getElementById('hier-descricao').value = h ? h.descricao : '';
+  document.getElementById('hier-empresas').value = h && (h.empresas || []).length ? h.empresas.join(', ') : '';
+  document.getElementById('hier-erro').style.display = 'none';
+
+  // Editar hierarquia mexe em TODO MUNDO que a tem — isso precisa estar na
+  // cara antes de salvar, não depois.
+  const av = document.getElementById('hier-afetados');
+  if (h && h.pessoas > 0) {
+    av.innerHTML = `Salvar recalcula o acesso de <b>${h.pessoas} ${h.pessoas === 1 ? 'pessoa' : 'pessoas'}</b> que tem esta hierarquia.`;
+    av.style.display = 'block';
+  } else {
+    av.style.display = 'none';
+  }
+
+  renderMatrizHier(h ? h.modulos : []);
+  document.getElementById('hier-overlay').style.display = 'flex';
+}
+
+function fecharHierModal() {
+  document.getElementById('hier-overlay').style.display = 'none';
+}
+
+async function salvarHierarquia() {
+  const erro = document.getElementById('hier-erro');
+  const btn  = document.getElementById('hier-btn-salvar');
+  const id   = document.getElementById('hier-id').value;
+  const nome = document.getElementById('hier-nome').value.trim();
+  const desc = document.getElementById('hier-descricao').value.trim();
+
+  erro.style.display = 'none';
+  if (!nome) { erro.textContent = 'Dê um nome à hierarquia.'; erro.style.display = 'block'; return; }
+  if (!desc) { erro.textContent = 'Descreva o que essa hierarquia faz — é o que evita a lista virar perfil_1, perfil_2.'; erro.style.display = 'block'; return; }
+
+  const empresas = document.getElementById('hier-empresas').value
+    .split(/[,;\s]+/).map(s => parseInt(s, 10)).filter(n => Number.isInteger(n));
+
+  const modulos = MODULOS_IDS.map(m => {
+    const val = c => !!document.querySelector(`#hier-matriz input[data-hm="${m}"][data-campo="${c}"]`)?.checked;
+    if (!val('visualizar')) return null;
+    const linha = { modulo: m, visualizar: true, admin_modulo: val('admin_modulo') };
+    ACOES_HIER.forEach(a => { linha[a] = val(a); });
+    return linha;
+  }).filter(Boolean);
+
+  btn.textContent = 'Salvando...'; btn.disabled = true;
+  try {
+    const r = await rpcGeral('geral_salvar_hierarquia', {
+      p_id: id ? Number(id) : null,
+      p_nome: nome, p_descricao: desc,
+      p_empresas: empresas, p_parceiro_id: null,
+      p_modulos: modulos,
+    });
+    // "Salvei" só vale se o banco confirmou a linha. Update barrado responde
+    // 200 e altera zero linhas — por isso a RPC devolve {ok:true} explícito.
+    if (!r || r.ok !== true) throw new Error('O banco não confirmou a gravação.');
+    fecharHierModal();
+    await carregarUsuarios();          // recarrega gente + hierarquias juntas
+    renderHierarquias();
+    bononiToast(r.afetados > 0
+      ? `Hierarquia salva. Acesso recalculado para ${r.afetados} ${r.afetados === 1 ? 'pessoa' : 'pessoas'}.`
+      : 'Hierarquia salva.', 'ok');
+  } catch (e) {
+    erro.textContent = e.message;
+    erro.style.display = 'block';
+  } finally {
+    btn.textContent = 'Salvar'; btn.disabled = false;
+  }
+}
+
+async function arquivarHierarquia(id, arquivar) {
+  const h = (window._hierarquias || []).find(x => String(x.id) === String(id));
+  if (arquivar && h && h.pessoas > 0) {
+    const ok = await bononiConfirmar(
+      `<b>${h.nome}</b> está em uso por ${h.pessoas} ${h.pessoas === 1 ? 'pessoa' : 'pessoas'}.<br><br>` +
+      'Arquivar tira dessas pessoas o acesso aos módulos desta hierarquia.',
+      { okText: 'Arquivar mesmo assim', perigo: true });
+    if (!ok) return;
+  }
+  try {
+    const r = await rpcGeral('geral_arquivar_hierarquia', { p_id: Number(id), p_arquivar: !!arquivar });
+    if (!r || r.ok !== true) throw new Error('O banco não confirmou a alteração.');
+    await carregarUsuarios();
+    renderHierarquias();
+    bononiToast(r.afetados > 0
+      ? `Acesso recalculado para ${r.afetados} ${r.afetados === 1 ? 'pessoa' : 'pessoas'}.`
+      : (arquivar ? 'Hierarquia arquivada.' : 'Hierarquia reativada.'), 'ok');
+  } catch (e) {
+    bononiToast('Erro: ' + e.message);
+  }
+}
+
+async function carregarHierLog() {
+  const box = document.getElementById('hier-log');
+  if (!box || box.dataset.carregado === '1') return;
+  box.innerHTML = 'Carregando…';
+  try {
+    const l = await rpcGeral('geral_log_recente', { p_limite: 50 });
+    box.dataset.carregado = '1';
+    if (!l?.length) { box.innerHTML = '<span style="color:var(--muted)">Nada registrado ainda.</span>'; return; }
+    box.innerHTML = l.map(r => `
+      <div style="padding:7px 0;border-top:1px solid var(--border);display:flex;gap:10px;flex-wrap:wrap;align-items:baseline">
+        <span style="color:var(--muted);white-space:nowrap">${new Date(r.quando).toLocaleString('pt-BR')}</span>
+        <span style="font-weight:700">${r.acao}</span>
+        <span>${r.alvo_email || (window._hierarquias || []).find(h => h.id === r.hierarquia_id)?.nome || ''}</span>
+        <span style="color:var(--muted);margin-left:auto">por ${r.quem_email || '—'}</span>
+      </div>`).join('');
+  } catch (e) {
+    box.innerHTML = `<span style="color:var(--status-crit-text)">Erro: ${e.message}</span>`;
+  }
+}
+
+
+// ── Hierarquia dentro do modal de usuário ──
+
+function popularSelectHierarquia(valor) {
+  const sel = document.getElementById('modal-hier');
+  const hs = (window._hierarquias || []).filter(h => !h.arquivada || String(h.id) === String(valor));
+  sel.innerHTML = '<option value="">— sem hierarquia (acesso manual) —</option>' +
+    hs.map(h => `<option value="${h.id}">${h.nome}${h.arquivada ? ' (arquivada)' : ''}</option>`).join('');
+  sel.value = valor || '';
+  sel.disabled = !!window._hierIndisponivel;
+  aoTrocarHierarquiaNoModal();
+}
+
+function aoTrocarHierarquiaNoModal() {
+  const sel = document.getElementById('modal-hier');
+  const desc = document.getElementById('modal-hier-desc');
+  const ajuda = document.getElementById('modal-modulos-ajuda');
+  const h = (window._hierarquias || []).find(x => String(x.id) === String(sel.value));
+
+  if (h) {
+    desc.innerHTML = `<b>${h.nome}:</b> ${h.descricao}`;
+    ajuda.innerHTML = 'Derivado da hierarquia — para mudar o que esta pessoa acessa, edite a hierarquia (vale para todo mundo que a tem) ou tire a hierarquia dela aqui.';
+    // Prévia: mostra o acesso que a hierarquia dá, já travado.
+    renderCheckboxes(
+      (h.modulos || []).filter(m => m.visualizar).map(m => m.modulo),
+      (h.modulos || []).filter(m => m.admin_modulo).map(m => m.modulo),
+      true);
+  } else {
+    desc.textContent = window._hierIndisponivel
+      ? 'Hierarquias indisponíveis neste banco — o acesso continua marcado à mão.'
+      : 'Sem hierarquia, o acesso é marcado à mão abaixo e não fica registrado em nenhum papel.';
+    ajuda.innerHTML = 'Marque o acesso; o <span style="color:var(--status-ok-text);font-weight:700">' + ic('shield-check', 'ic-sm') + ' admin</span> libera a administração daquele app (só disponível se tiver o acesso).';
+    const u = (window._todosUsuarios || []).find(x => x.id === document.getElementById('modal-uid').value);
+    renderCheckboxes(u?.modulos || [], u?.admin_modulos || [], false);
+    hydrateIcons(ajuda);
+  }
+  atualizarAvisoHierarquia();
+}
+
+// Avisa quando o admin global está mexendo na própria linha: o banco recusa
+// (ninguém edita a própria hierarquia), e é melhor dizer antes de salvar.
+function atualizarAvisoHierarquia() {
+  const uid = document.getElementById('modal-uid').value;
+  const desc = document.getElementById('modal-hier-desc');
+  const sel = document.getElementById('modal-hier');
+  if (uid && _usuarioAtual && uid === _usuarioAtual.id) {
+    sel.disabled = true;
+    desc.innerHTML = '<span style="color:var(--status-warn-text)">Você não altera a própria hierarquia. Peça a outro administrador global.</span>';
+  }
+}
+
+window.setAdminSub = setAdminSub;
+window.abrirHierModal = abrirHierModal;
+window.fecharHierModal = fecharHierModal;
+window.salvarHierarquia = salvarHierarquia;
+window.arquivarHierarquia = arquivarHierarquia;
+window.carregarHierLog = carregarHierLog;
+window.aoTrocarAcessoModulo = aoTrocarAcessoModulo;
+window.aoTrocarHierarquiaNoModal = aoTrocarHierarquiaNoModal;
 
 // ── Resetar Senha ──
 function toggleResetSenha() {
@@ -3197,7 +3740,10 @@ async function salvarMinhaSenha() {
   if (nova !== conf) { err.textContent = 'As senhas não coincidem.'; err.style.display = 'block'; return; }
 
   // Verificar senha atual fazendo re-login
-  const { error: errLogin } = await sb.auth.signInWithPassword({ email: currentUser.email, password: atual });
+  // Era `currentUser`, que nunca foi declarado em lugar nenhum: sob
+  // 'use strict' isto estourava ReferenceError e a troca da própria senha
+  // não funcionava. `_usuarioAtual` é preenchido no mostrarPortal.
+  const { error: errLogin } = await sb.auth.signInWithPassword({ email: _usuarioAtual.email, password: atual });
   if (errLogin) { err.textContent = 'Senha atual incorreta.'; err.style.display = 'block'; return; }
 
   // Atualizar para a nova senha
@@ -3535,6 +4081,8 @@ async function init() {
   if (session) {
     const meta = session.user.user_metadata || {};
     mostrarPortal({
+      id:      session.user.id,
+      email:   session.user.email,
       nome:    meta.nome || session.user.email.split('@')[0],
       admin:   meta.admin === true,
       modulos: meta.modulos || [],

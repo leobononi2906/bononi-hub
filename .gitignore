@@ -1,0 +1,5 @@
+# Rascunho do CLI do Supabase (`db query --linked`). Não versionar: o
+# `linked-project.json` grava a qual projeto ESTA máquina está apontada —
+# aqui, o de TESTE. Versionado, ele faria a próxima pessoa achar que o repo
+# pertence ao banco de teste.
+supabase/.temp/
