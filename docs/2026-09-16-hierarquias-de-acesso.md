@@ -293,9 +293,78 @@ Em produção, 6/6:
 - as 5 funções que o front chama → **executam**
 - `SELECT` direto na tabela → **barrado**, mesmo para quem está logado
 
-## O que NÃO foi feito
+## As 5 primeiras hierarquias — derivadas, não inventadas
 
-- **Nenhuma hierarquia foi criada em produção.** As tabelas estão no ar e vazias.
+Criadas em 16/09 (`supabase/migrations/0004_geral_hierarquias_seed.sql`). **Nenhuma saiu de
+organograma.** Agrupei o `modulos` das 52 pessoas de produção e só virou hierarquia a combinação
+com **2 ou mais pessoas**:
+
+| Hierarquia | Módulos | Pessoas no grupo hoje |
+|---|---|---|
+| **Vendedor** | `varejo`, `frete` | 8 (todas ativas em 90d) |
+| **Representante Stonni** | `atacado`, `stonni`, `varejo`, `frete` | 3 |
+| **Comprador** | `compras`, `frete` | 3 |
+| **Expedição — administrador** | `expedicao` *(admin do módulo)* | 2 |
+| **Comercial Stonni — consulta** | `stonni` | 2 |
+
+Descrever o acesso que a pessoa **já tem** é o que torna a migração inerte: atribuir a hierarquia
+a quem já está no grupo não muda uma linha do metadata dela.
+
+### O achado que mudou o desenho
+
+O **maior** agrupamento era "nenhum módulo", com 13 pessoas. Os nomes entregaram:
+`cristalfriocatalao`, `truckairservice2026`, `otoraclimatizacao`, `nauticagrillorefrigeracao` —
+são oficinas.
+
+**12 delas são parceiros da rede autorizada**, vinculados em `prt_usuarios`, e entram no Portal
+do Parceiro por `parceiro_id` — **não** por `modulos`. Dos 16 parceiros, só **1** tem o módulo
+`rede-autorizada`.
+
+Dar a eles uma hierarquia com essa chave não mudaria nada no Portal, mas **acenderia o cartão do
+app da Rede Autorizada no Hub**, que é ferramenta interna. Seria concessão silenciosa de
+privilégio, disfarçada de organização. Por isso **parceiro não recebe hierarquia de módulo**.
+
+A 13ª, `expedbononi`, não é parceira nem tem módulo. Virou pendência, não papel.
+
+### Quem mais ficou de fora
+
+- **Os 8 admins globais** — `admin: true` vê tudo por definição, e a hierarquia não concede admin
+  global de propósito.
+- **Os perfis de uma pessoa só** — diretoria e gerências, com 6 a 10 módulos cada. Uma hierarquia
+  por pessoa não é papel, é apelido. Seguem marcadas como `manual` na tela, que é o certo: é
+  exceção até alguém decidir que virou papel.
+
+### Sobre os verbos, e por que eles estão quase todos vazios
+
+Hoje **nenhum app lê** `incluir`/`editar`/`excluir`/`aprovar`/`exportar` — só `visualizar` e
+`admin_modulo` alimentam o espelho. Então:
+
+- módulo que a hierarquia **administra** → todos os verbos (administrar é poder fazer)
+- módulo que ela só acessa → **só `visualizar`**, e a descrição diz que falta definir
+
+Inferir "pode aprovar" do metadata seria inventar autoridade: **o metadata não guarda verbo.**
+Essa parte é para quem manda no processo, e é o que ainda falta.
+
+### O seed não atribui ninguém
+
+Criar é inerte. **Atribuir** é o ato que recalcula o `user_metadata`, e esse é do admin global,
+na tela, uma pessoa por vez. É também o passo onde dá para conferir o espelho antes de seguir.
+
+Idempotente (`on conflict (nome) do nothing`): rodado duas vezes no banco de teste, continuou 5,
+sem sobrescrever edição feita na tela.
+
+**Conferido em produção:** as 5 com os módulos certos, **0 atribuições**, 5 linhas de log com
+autoria honesta (`quem` nulo e e-mail `seed 0004`, porque ninguém clicou em nada), e os 36
+usuários com módulo continuam 36.
+
+O texto acentuado foi conferido por **bytes**, não pela tela: `Expedição — administrador` tem 25
+caracteres em 29 bytes, com U+2014 presente e zero mojibake. O terminal desta máquina mostra
+`Ã§` porque lê a saída UTF-8 como cp1252 — acreditar nele levaria a "consertar" dado que está
+certo.
+
+## O que ainda NÃO foi feito
+
+- **Ninguém foi atribuído.** O metadata legado segue valendo, e a etiqueta `manual` mostra quem falta.
 - **Nenhuma hierarquia foi desenhada.** Papel bom nasce do trabalho, não do organograma — a
   pergunta que destrava é *"quem faz esse trabalho hoje, e o que essa pessoa precisa conseguir
   fazer?"*, e ela é para quem manda no processo, não para quem escreve o código. Enquanto a
