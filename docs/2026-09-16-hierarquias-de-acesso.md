@@ -243,14 +243,64 @@ do varejo revogaria o acesso dele em silêncio.
 Depois do `rollback`: 0 hierarquias, 0 atribuições, 0 linhas de log, o usuário sintético sumiu e
 o metadata do admin do banco de teste continua byte a byte o mesmo.
 
+### Em produção — aplicada em 16/09
+
+Pré-voo só de leitura antes de tocar em qualquer coisa, com impressão digital do banco
+(52 usuários, 8 admins, 105 funcionários — o de teste tem 1, então não havia como errar de
+banco). **Zero colisão** de tabela ou função com os `geral_*` que já existiam
+(`geral_bling_composicoes`, `geral_itens_faturados`, `geral_patio_horas_reais`,
+`geral_pecas_preco_bononi_sc`).
+
+**O achado que validou o registro único melhor do que qualquer teste:** as chaves de módulo em
+uso hoje em produção são **exatamente as 14** do registro. Nenhuma sobra. `varejo_admin`,
+`atacado` e `operacoes` estão nas mãos de gente de verdade — não eram chaves mortas, e se a
+matriz não as cobrisse, a primeira atribuição a essas pessoas revogaria o acesso delas em
+silêncio.
+
+Depois de aplicar: 4 tabelas, 15 funções, RLS nas 4, **0 policies**, log vazio, 0 atribuições,
+e o metadata de ninguém foi tocado.
+
+Com a **chave anon de produção** — a mesma que está no fonte de todo app:
+
+| Tentativa | Resposta |
+|---|---|
+| `GET /geral_hierarquias` | **401** |
+| `GET /geral_usuario_hierarquia` | **401** |
+| `POST /rpc/geral_salvar_hierarquia` | **401** |
+| `POST /rpc/geral_atribuir_hierarquia` | **401** |
+| `POST /rpc/geral_quem_tem_acesso` | **401** |
+| `GET /rh_funcionarios` (para comparar) | 200 |
+
+**12 travas conferidas em produção** com gente de verdade (um admin real e um usuário comum
+real, só trocando o `sub` do JWT; nenhum usuário sintético, nada escrito em `auth.users`), tudo
+em `BEGIN/ROLLBACK` — 12/12. Inclui a que o script `SO-TESTE` removia no banco de teste:
+atribuir a si mesmo é recusado em produção.
+
+### O teste que faltava, e que quase passou batido
+
+As 19 checagens do ciclo rodam como o papel do **CLI**, que é superusuário, e só trocam o
+`request.jwt.claims`. Isso prova a **lógica** — quem é admin, quais travas disparam — mas
+**não prova o `grant`**, porque superusuário passa por cima de grant.
+
+O buraco que isso deixaria: um `revoke all ... from public, anon` sem o `grant execute ... to
+authenticated` correspondente daria **19/19 no ciclo e uma tela morta** para o admin de verdade,
+com 401 em tudo. O teste verde e o app quebrado ao mesmo tempo.
+
+Por isso existe o `supabase/testes/0003_grants_authenticated.sql`, que faz
+`set local role authenticated` — que é o que o PostgREST faz com o token de quem está logado.
+Em produção, 6/6:
+
+- as 5 funções que o front chama → **executam**
+- `SELECT` direto na tabela → **barrado**, mesmo para quem está logado
+
 ## O que NÃO foi feito
 
-- **A migration não foi aplicada em PRODUÇÃO.** Só no banco de teste. O arquivo está em
-  `supabase/migrations/0003_geral_hierarquias.sql`; o teste do ciclo, em
-  `supabase/testes/0003_hierarquias_ciclo.sql`, vale rodar contra produção depois de aplicar.
+- **Nenhuma hierarquia foi criada em produção.** As tabelas estão no ar e vazias.
 - **Nenhuma hierarquia foi desenhada.** Papel bom nasce do trabalho, não do organograma — a
   pergunta que destrava é *"quem faz esse trabalho hoje, e o que essa pessoa precisa conseguir
-  fazer?"*, e ela é para quem manda no processo, não para quem escreve o código.
+  fazer?"*, e ela é para quem manda no processo, não para quem escreve o código. Enquanto a
+  lista estiver vazia, as 52 pessoas seguem com o acesso manual de sempre: nada mudou para
+  ninguém até que alguém receba uma hierarquia.
 - **Ninguém foi migrado.** O metadata legado continua valendo; a etiqueta `manual` mostra quem
   falta.
 - **O leitor só está no Compras.** Faltam os outros 10 apps do catálogo — é cópia do arquivo +
